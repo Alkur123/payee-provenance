@@ -165,7 +165,7 @@ saved, then paid) now needs one confirmation; nothing else changed.
 
 ### 8. Deployable service
 `python -m payee_provenance.server` runs the gate as an HTTP service (standard library only; `openapi.yaml`;
-`Dockerfile`, written but not build-tested on our machine). It refuses to start without four bank-held keys or with a
+`Dockerfile`; the 178 MB image is built and smoke-tested by `python docker_smoke.py`, 10/10 checks: refuses to start without keys, runs as non-root, Docker health check healthy, allow/block/403 over HTTP, receipts survive a restart and verify, a tampered receipt store stops it starting). It refuses to start without four bank-held keys or with a
 tampered receipt store; the bank seals session state, the bank's app signs confirmations, the gate mints single-use
 execution tokens, and a confirmed payment's token is not accepted before its hold ends. `python loadtest.py`: 517-553
 decisions/s across three runs on one laptop process, median 27-29 ms, p99 44-47 ms, every receipt on disk before its

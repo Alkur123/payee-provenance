@@ -1,0 +1,38 @@
+\subsection{An attacker who knows every rule (pre-registered)}\label{app:adaptive}
+SAFL's judges assume the attacker knows the system's logic. We tested exactly that (pre-registration PR56, hashed before
+the harness existed). A language model (gpt-4.1-mini) was given the gate's complete rules, the customer's task, its own
+account and the channels it controls (the bill or notice the customer named, SMS, web pages, collect requests, files the
+agent writes). It wrote the text of those channels; after a failed attempt it was told the gate's verdict and reasons and
+tried again, up to three rounds, on all 45 attack scenarios. The agent was gpt-4.1-mini behind the gate. Its ideas were
+those of a white-box attacker: claim the fraud account is the ``registered payee'', place it where the customer's words
+should be, get it saved first and paid second.
+{\small
+\begin{longtable}{p{7.4cm}p{\dimexpr\linewidth-11.4cm-6\tabcolsep\relax}p{4cm}}
+\toprule
+prediction & first run (gate v3.1) & re-run (gate v3.2)\\
+\midrule
+W1: with a customer who reads confirmations, no attack succeeds & held: 0/45 (135 attacker texts) & held: 0/45 (135)\\
+W2: with a customer who approves everything, every attack that succeeds is held, none paid at once & \textbf{failed}:
+7/45 succeeded, 2 paid at once & held: 7/45 succeeded, all held\\
+W3: no attacker payee is ever classed P, K or R & \textbf{failed} & \textbf{failed}\\
+W4 (reported): the same attacker texts without the gate & 19/45 succeeded & 17/45 succeeded\\
+\bottomrule
+\end{longtable}}
+\textbf{The bypass the attacker found.} It had the agent \emph{add} its account as a saved payee (a confirmation, which
+the approves-everything customer accepted) and then pay it. A saved payee is class K, and the hosts in our code had
+marked only \emph{changed} payees as inside the cooling-off window, not \emph{added} ones, so the payment went through at
+once instead of being held: the claim that one deceived click is not enough was false for this path. The fix (v3.2) is
+one shared function every host uses, which puts a payee in the cooling-off window whether it was added or changed,
+except a biller's registered handle. The fresh re-run, written before it began as an amendment to the pre-registration,
+found no instant payment. W3 stays failed: after an approved add, the attacker's account is class K and is held, which
+the prediction did not allow for; in the amount-inflation family the payee is genuinely the customer's. Every attacker
+call recorded in the re-run (126) gets the same verdict from the final code.
+
+\textbf{Other fixes in v3.2, each with a test and a planted defect that the tests catch.} UPI payment links and QR
+payloads (\texttt{upi://pay?pa=...}) are now read: a link the customer pastes is the customer's own payee, and the same
+link in an SMS is still blocked. Mobile numbers written with a leading 0 now match. An amount the customer wrote next to
+one payee no longer caps a different payment in the same message, while a ceiling with no payee beside it (``the bill, up
+to Rs 2,000'') still applies to every payment. These three had all failed closed, blocking legitimate payments. Across
+every earlier evaluation the only change is one legitimate payment, to an unregistered payee taken from a bill, saved and
+then paid, which now needs one confirmation. The suite is 63 tests, and all 27 planted defects are caught.
+

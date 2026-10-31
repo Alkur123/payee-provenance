@@ -1,0 +1,20 @@
+\paragraph{As a service.} The repository includes the gate as an HTTP service that uses only Python's standard library
+(\texttt{payee\_provenance/server.py}, an OpenAPI description and a Dockerfile). It refuses to start unless four keys
+held by the bank are supplied: one seals the session state the bank builds from its own records, one signs the customer's
+answer to a confirmation in the bank's app, one mints the execution tokens the payment backend requires, and one signs
+the receipt chain. It also refuses to start if the stored receipt chain does not verify. A confirmed payment receives a
+token that the backend will not accept before the hold ends, so the hold is enforced by the backend rather than by
+convention. Six tests drive it over real HTTP. On one laptop process, 16 concurrent clients sending 4,000 mixed requests
+received 517 to 553 decisions per second across three runs (median 27--29\,ms, 99th percentile 44--47\,ms). Every
+response waits until its receipt is on disk; one disk flush covers all receipts waiting at that moment (group commit),
+and after each run all 4,000 receipts were on disk and the chain read back from disk verified against its anchored head.
+The decision itself takes a median of 32\,\textmu s; in-process without durable writes the service makes 11,436
+decisions per second, so throughput is set by the disk, not the gate. A single receipt chain is a serialisation point,
+so a bank would run one chain per shard (per customer or per agent), each anchored separately. We wrote the Dockerfile but could not build-test it on the evaluation machine.
+
+\paragraph{A field proposal for the Unified Agent Protocol.} \texttt{PAYEE\_PROVENANCE\_FIELDS.md} in the repository
+specifies the fields an agent payment request would carry (provenance class and source, the gate's decision, any
+confirmation and hold, and references to the signed receipt and the mandate), with a JSON Schema in which a class-W payee
+cannot appear and a class-D payee cannot appear without a confirmation. The same object fits ISO 20022's
+\texttt{SupplementaryData} block, so it can travel on SEPA or Faster Payments messages as well as UPI.
+
