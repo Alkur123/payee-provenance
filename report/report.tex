@@ -32,253 +32,86 @@
 
 \begin{document}
 \maketitle
-\vspace{-1.2em}
+\vspace{-1.5em}
 
-\begin{center}\fbox{\parbox{0.95\linewidth}{\small
-\textbf{One line (25 words).} A deterministic gate that lets an AI agent pay only payees the customer supplied, blocking
-injected payees that pass every UPI spending cap, with a signed dispute receipt.\\[4pt]
-\textbf{What we found.} Every control on a payment rail asks \emph{is it you?} or \emph{is it them?}. Authorised push
-payment fraud passes both. The third question, \emph{who supplied this payee?}, cannot be answered for a human payment
-because the scam happens off-channel. For an AI agent's payment it can be answered exactly, at payment time, from what the
-bank or app already sees.\\[4pt]
-\textbf{Evidence} (every prediction hashed before scoring; failures reported). (1) \textbf{Every banking run AgentDojo
-publishes}: 28 model and pipeline configurations, 15 attack types, 7,802 runs: every attacker call stopped in
-\textbf{1,477/1,477} successful attacks, including \textbf{299/299} that had already got past an existing defence
-(prompt-injection detector, tool filter, spotlighting, Meta-SecAlign); a UPI-style spending cap let \textbf{83.6\%} through.
-One prediction failed: 11/210 legitimate-intent payments were blocked, every one the agent paying a wrong account (its own,
-a corrupted IBAN, an invented one). (2) \textbf{Three real LLMs as the payment agent} (Google gemma4; OpenAI gpt-oss-120b
-and gpt-4.1-mini): \textbf{46} attacks moved money undefended (12/45, 14/44, 20/45), \textbf{0} gated, no legitimate task
-lost. (3) \textbf{A real, unmodified Indian open-source payout server}: attacker payouts reached its payment API in
-\textbf{14/15} (gemma4) and \textbf{10/15} (gpt-4.1-mini) attacks direct, \textbf{0/15} gated with both, every legitimate
-payout delivered as often as without the gate; the server's own self-reported provenance called the attacker's payee ``user
-input'' 12 of 20 times. (4) \textbf{White-box red team}, agent fully hijacked, 150 attacks in 15 Indian fraud families:
-\textbf{0} succeed when the customer reads the confirmation; if they approve everything, \textbf{10} are approved and
-\textbf{none is paid at once} (held with a cancel link); \textbf{150/150} legitimate payments complete. (5) 32 tests incl.\
-a 5,000-case fail-closed fuzz; \textbf{15/15} planted defects caught; median decision time 74\,\textmu s, no model.
-}}\end{center}
+\section{Team information}
+{\small
+\begin{tabularx}{\linewidth}{@{}p{4.2cm}X@{}}
+\toprule
+Team name & Aegis AI\\
+Primary contact & Jaswanth Alkur (email and WhatsApp given in the submission form)\\
+Team size & 2\\
+\bottomrule
+\end{tabularx}}
 
-\begin{figure}[t]
-\centering
-\begin{tikzpicture}
-\begin{axis}[
-  scale only axis, width=10.6cm, height=6.2cm,
-  xmin=-4, xmax=104, ymin=0.4, ymax=7.6,
-  xtick={0,20,40,60,80,100}, xticklabel={\pgfmathprintnumber{\tick}\%},
-  xlabel={share of attacks that moved money (or would have)},
-  ytick={1,2,3,4,5,6,7},
-  yticklabels={
-    {AgentDojo, every banking run (n\,=\,1{,}477)},
-    {Red team, agent hijacked (n\,=\,150)},
-    {Closed loop, gemma4 (n\,=\,45)},
-    {Closed loop, gpt-oss-120b (n\,=\,44)},
-    {Closed loop, gpt-4.1-mini (n\,=\,45)},
-    {Real payout server, gemma4 (n\,=\,15)},
-    {Real payout server, gpt-4.1-mini (n\,=\,15)}},
-  yticklabel style={font=\small, text=black!80},
-  xticklabel style={font=\small, text=black!65},
-  xlabel style={font=\small, text=black!65},
-  axis line style={draw=black!25}, tick style={draw=none},
-  xmajorgrids, grid style={draw=black!8},
-  enlargelimits=false, clip=false,
-  legend style={at={(0.5,1.02)}, anchor=south, legend columns=3, draw=none, font=\small,
-                /tikz/every even column/.append style={column sep=10pt}},
-  every node near coord/.append style={font=\scriptsize, text=black!80},
-]
-% connectors: from the gate (0) to the worst baseline on each row
-\addplot[draw=black!22, line width=1.6pt, forget plot] coordinates {(0,1) (83.6,1)};
-\addplot[draw=black!22, line width=1.6pt, forget plot] coordinates {(0,2) (100,2)};
-\addplot[draw=black!22, line width=1.6pt, forget plot] coordinates {(0,3) (26.7,3)};
-\addplot[draw=black!22, line width=1.6pt, forget plot] coordinates {(0,4) (31.8,4)};
-\addplot[draw=black!22, line width=1.6pt, forget plot] coordinates {(0,5) (44.4,5)};
-\addplot[draw=black!22, line width=1.6pt, forget plot] coordinates {(0,6) (93.3,6)};
-\addplot[draw=black!22, line width=1.6pt, forget plot] coordinates {(0,7) (66.7,7)};
-% no defence
-\addplot[only marks, mark=*, mark size=3.4pt, color=cnone, mark options={draw=white, line width=0.8pt},
-  nodes near coords={\pgfmathprintnumber[fixed,precision=1]{\pgfplotspointmeta}\%},
-  point meta=x, every node near coord/.append style={anchor=south, yshift=2pt}]
-  coordinates {(100,2) (26.7,3) (31.8,4) (44.4,5) (93.3,6) (66.7,7)};
-\addlegendentry{no defence}
-% existing control (UPI-style spending cap)
-\addplot[only marks, mark=square*, mark size=3.1pt, color=ccap, mark options={draw=white, line width=0.8pt},
-  nodes near coords={\pgfmathprintnumber[fixed,precision=1]{\pgfplotspointmeta}\% cap},
-  point meta=x, every node near coord/.append style={anchor=north, yshift=-2pt}]
-  coordinates {(83.6,1) (78.0,2)};
-\addlegendentry{spending cap (existing control)}
-% our gate
-\addplot[only marks, mark=diamond*, mark size=4.2pt, color=cgate, mark options={draw=white, line width=0.8pt},
-  nodes near coords={\textbf{0}}, point meta=x,
-  every node near coord/.append style={anchor=east, xshift=-3pt, text=cgate}]
-  coordinates {(0,1) (0,2) (0,3) (0,4) (0,5) (0,6) (0,7)};
-\addlegendentry{our provenance gate}
-\end{axis}
-\end{tikzpicture}
-\caption{\textbf{Every evaluation, one picture: the gate lets no attack through.} Each row is a separate pre-registered
-evaluation or test set; the gate's point sits at 0 in all seven. The models that fell for the most attacks undefended were
-stopped just as completely. AgentDojo rows are attacks that already succeeded against the agent, so ``no defence'' is
-100\% by construction and only the cap is shown; 299 of them had also beaten an existing defence (prompt-injection
-detector, tool filter, spotlighting, Meta-SecAlign). Red team: customer reads the confirmation; if they approve
-everything, 10/150 are approved and all are held, none paid at once. Legitimate tasks lost to the gate: none in any closed
-loop or real-server run.}
-\label{fig:results}
-\end{figure}
+\section{Team members}
+{\small
+\begin{tabularx}{\linewidth}{@{}p{4.2cm}XX@{}}
+\toprule
+ & Member 1 (primary contact) & Member 2\\
+\midrule
+Full name & Jaswanth Alkur & Kiran Kadekoppa\\
+Institution / organisation & Aegis AI & HUEX Labs\\
+Background & Founder; engineer and AI-safety researcher & Engineer (CTO and co-founder, HUEX Labs)\\
+\bottomrule
+\end{tabularx}}
+
+\section{How we took part}
+{\small
+\begin{tabularx}{\linewidth}{@{}p{4.2cm}X@{}}
+\toprule
+Participation mode & Online only\\
+Track & Technical (working prototype and technical research)\\
+Challenge area & System Resilience\\
+\bottomrule
+\end{tabularx}}
 
 \section{Project overview}
 \textbf{Project title.} Who Said So? Payee provenance for AI-agent payments on UPI.
 
-\textbf{Website description (95 words).} UPI is opening to AI agents that pay on a customer's behalf within spending caps.
-A cap limits how much an agent spends, not whom it pays: one hidden line in a bill, an SMS or a web page can redirect a
-payment that passes every check. We built a gate that asks a question no payment control asks today, \emph{who supplied
-this payee?}: the customer, the bank's own records, or outside text. It blocks or asks for confirmation accordingly and
-writes a signed receipt for disputes. On public banking traces from four AI vendors it stopped all 197 successful
-attacks without blocking a legitimate payment.
+\textbf{One-line summary.} A check at the bank that lets an AI agent pay only a payee the customer or the bank supplied,
+and records who supplied it.
 
-\section{The submission at a glance (template sections, template length)}
-{\small Each answer below follows the hackathon template's length; the full evidence is in the section named after it.}
+\textbf{Website description.} UPI is opening to AI agents that pay on a customer's behalf within spending caps. A cap
+limits how much an agent spends, not whom it pays: one hidden line in a bill, an SMS or a web page can redirect a payment
+that passes every check. We built a gate that asks a question no payment control asks today, who supplied this payee?: the
+customer, the bank's own records, or outside text. It blocks or asks for confirmation accordingly and writes a signed
+receipt for disputes. On public banking traces from four AI vendors it stopped all 197 successful attacks without blocking
+a legitimate payment.
 
-\textbf{Problem and who is affected} (Section~\ref{sec:problem}). UPI is opening to AI agents that pay on a customer's behalf inside
-spending caps. Every payment control asks \emph{is it you?} (PIN, OTP, device binding) or \emph{is it them?} (payee name
-look-up). Authorised push payment fraud passes both, and agents widen it: one hidden line in a bill, an SMS or a web page
-can redirect a payment that stays inside every cap and passes every PIN check. A cap limits how much, not whom. From
-1 January 2027, RBI's directions put the burden of proof for fraudulent electronic banking transactions on the bank, which
-must then show where the account the money went to came from. Affected: customers who delegate payments, the banks and
-PSPs that carry the liability, and billers whose invoices are spoofed.
+\section{The problem}
+\textbf{DPI system addressed.} UPI, including bill payments through Bharat Connect; the check applies to any rail on which
+an agent chooses the payee.
 
-\textbf{Approach} (Section~\ref{sec:approach}). We check provenance, not content. For every payment an agent proposes, the gate asks where
-the payee came from, using only records the bank already holds, and assigns a class: \textbf{P} the customer's own signed
-words, \textbf{K} a payee the customer saved, \textbf{R} a registered biller's handle, \textbf{D} a document the customer
-named, \textbf{W} anything else. P, K and R are allowed, D needs the customer's confirmation, W is blocked. Further rules
-can only tighten: a bill that claims a registered biller must carry that biller's handle; the amount must match what the
-customer stated or the bill fetch; paying a saved payee more than last time, or just after it changed, needs confirmation.
-A confirmed step-up becomes a timed hold with a cancel link. Every decision writes a hash-chained, HMAC-signed receipt for
-disputes. No model and no network call: 424 lines, median 74\,\textmu s per decision, at the bank, for any agent.
+\textbf{Which DPI assumption breaks.} UPI assumes that the person who authorises a payment also chose who gets paid. The
+PIN, the OTP and the payee-name display check the payer and the account; none checks where the account number came from,
+because for a human payment it came from the human. When an agent pays under a UPI Circle delegation or a Reserve Pay
+mandate, the customer approves a limit once and the agent then picks each payee from whatever it reads: a bill, an SMS, a
+web page, a collect request. Text written by an attacker can choose the payee, and the payment still passes every check,
+because none of the checks looks at where the payee came from.
 
-\textbf{Threat model and resilience under exposure} (Section~\ref{sec:threat}). The agent is assumed fully hijacked. The attacker controls
-bills, SMS, e-mail, web pages, collect requests and files the agent writes, and knows our rules, which are public. The
-attacker cannot write the customer's signed messages, the bank's beneficiary records or the biller registry, and never
-holds the receipt key. Knowing the rules does not help: to pass, an attacker would have to write into the customer's own
-message or the bank's own records, and nothing the agent reads or does can reach them. Because the gate never interprets text there is no classifier to fool and no threshold to sit
-under: homoglyphs, zero-width characters and look-alike or suffix VPAs only stop an identifier matching the customer's,
-which makes it W, which blocks. Failure is closed by construction, checked by a 5,000-case fuzz and fifteen planted
-defects, all caught. Residual: a customer talked into typing the scammer's account; a coached-payment check holds such
-payments when the app sees a call with an unknown number or screen sharing.
+\textbf{Problem statement and who is affected.} A customer asks an agent to pay the electricity bill. The bill carries one
+extra line asking for a ``late fee'' to another UPI ID. In our recorded run, a real model paid the biller and then the
+fraudster, inside the cap. Authorised push payment fraud already resists every control because the scam happens off the
+bank's channel; agents add a channel where one working injection repeats across every user of the same agent design. UPI is
+opening to agents now (Razorpay and NPCI on Claude, February 2026; NPCI Operating Circular 201-B; the planned Unified Agent
+Protocol). From 1 January 2027, RBI's directions put the burden of proof for fraudulent electronic banking transactions on
+the bank, which today keeps no record of who chose the payee. Customers lose the money; banks carry the liability without
+the evidence.
 
-\textbf{How we evaluated it} (Section~\ref{sec:eval}). (1) Every banking run AgentDojo publishes: 28 model and defence configurations,
-7,802 runs, against a UPI-style cap and an allowlist. (2) A closed loop with three real LLMs as the payment agent (gemma4,
-gpt-oss-120b, gpt-4.1-mini), 90 scenarios each run undefended and gated. (3) An Indian payment gateway's official
-open-source payout server, built unmodified and run against a local capture proxy, with two models. These were
-pre-registered (six registrations, predictions hashed before scoring; failures reported). (4) A white-box red team of 150
-attacks in 15 Indian fraud families that we wrote (design results). (5) Tests that can fail. All data synthetic; no live
-payment system touched.
-
-\textbf{Key results} (Section~\ref{sec:results}; Figure~\ref{fig:results}).
-\begin{itemize}
-\item \textbf{AgentDojo:} 1,477/1,477 successful attacks stopped, including 299/299 that had beaten an existing defence;
-a spending cap let 83.6\% through. One prediction failed: 11/210 legitimate-intent payments blocked, each to a wrong
-account the agent itself produced.
-\item \textbf{Three real LLMs:} 46 attacks moved money undefended (12/45, 14/44, 20/45); \textbf{0} with the gate; no
-legitimate task lost.
-\item \textbf{Real payout server:} attacker payouts reached the payment API in 14/15 and 10/15 episodes direct,
-\textbf{0/15} gated; the server's self-reported provenance called the attacker's payee ``user input'' 12 of 20 times.
-\end{itemize}
-
-\textbf{Hardest problem} (Section~\ref{sec:hardest}). The attacker's account sat inside the very bill the customer asked the agent to pay,
-so provenance alone could not separate a real biller from a fraudster. The fix was to see that ``pay this bill''
-authorises the \emph{biller}, not whatever account the document prints, and to bind such documents to the biller registry.
-
-\section{The problem, and who is affected}\label{sec:problem}
-\subsection{The long-standing gap: payment controls never ask who supplied the payee}
-For three decades, payment security has answered two questions. \emph{Is it you?} is answered by the UPI PIN, OTPs and device
-binding. \emph{Is it them?} is answered by payee-name display on UPI, RBI's beneficiary account name look-up for RTGS and
-NEFT (mandated for member banks by 1 April 2025), and the UK's Confirmation of Payee; like Confirmation of Payee, India's
-look-up lets the sender proceed even without a match. Mule-account detection works on the same question from the other
-side: RBI Innovation Hub's MuleHunter.AI is reported to be operational in 26 banks (parliamentary answer, March 2026). Authorised push payment
-(APP) fraud passes both: the customer is genuine and the account really exists. It is the fraud that has resisted every
-control:
-\begin{itemize}
-\item \textbf{UK:} payment fraud losses of \pounds1.28bn in 2025; APP losses rose 19\% to \pounds576.4m across 248,070 cases.
-66\% of APP cases originated online and 17\% via telecommunications, channels the paying bank never sees (UK Finance
-Annual Fraud Report 2026).
-\item \textbf{India:} UPI fraud losses reported to Parliament were \Rs1,087 crore (FY2023--24) and \Rs981 crore (FY2024--25);
-cyber-fraud losses reported through NCRP were about \Rs22,000 crore in 2025 (secondary reports of I4C data; figures vary
-by source).
-\item \textbf{NPCI's own response} shows where the fraud lives. Its circular of 29 July 2025 ended UPI person-to-person
-\emph{collect} requests from 1 October 2025, because payee-initiated requests were the fraud channel (as reported by
-Business Today, Outlook and others; merchant collect continues). The rule removed a feature for every user because the
-rail could not tell a genuine request from a scam one.
-\end{itemize}
-The reason no control asks \emph{who supplied this payee?} is that, for a human payment, nobody can answer it. The scammer's
-instruction arrives on a phone call or in a WhatsApp chat. By the time the customer types the account into the banking app,
-its origin is gone.
-
-\subsection{AI agents change what is observable, and what is at stake}
-UPI is now opening to agents. On 20 February 2026 Razorpay and NPCI launched agentic payments on Claude for Zomato, Swiggy
-and Zepto, in which the user sets one spending limit per merchant on UPI Reserve Pay and the agent then pays without a PIN
-for each purchase (Razorpay newsroom). NPCI is developing a Unified Agent Protocol (UAP) under which customers could
-authorise agents to transact within predefined limits, building on UPI Circle (delegated payments; on BHIM up to \Rs15,000
-a month) and Reserve Pay. NPCI has not released its specifications or liability model (CIO.inc, 9 September 2026); one
-report says the protocol was not launched at Global Fintech Fest 2026 and awaits RBI clearance, while NPCI did launch AtOM,
-an orchestration platform producing signed, machine-readable audit trails (single secondary source). Private rails are
-already live: Pine Labs' P3P (June 2026) extends UPI one-time mandates and Reserve Pay to agent-triggered payments.
-
-These mandates bound \textbf{how much}. Nothing in them binds \textbf{who said so}. As CIO.inc puts it, an agent ``could
-remain within a spending limit while making a purchase the customer did not intend.'' An agent reads invoices, SMS, e-mail
-and web pages; one line of attacker text in any of them can swap the payee, and the payment passes every check on the rail.
-Because one agent design serves millions of users, one working injection repeats at population scale.
-
-But agents also make the missing question answerable. Everything the agent read is in its context, and the bank or app that
-hosts it knows which text came from the customer. The scam that was off-channel for humans is \emph{on-channel} for agents.
-
-\subsection{Why it matters now: liability moves to the bank}
-RBI's \emph{Commercial Banks -- Responsible Business Conduct -- Third Amendment Directions, 2026} apply to electronic banking
-transactions on or after 1 January 2027. According to Economic Laws Practice's analysis of the directions, they introduce
-a \emph{Fraudulent Electronic Banking Transaction} that expressly covers transactions undertaken by customers themselves
-under coercion or duress and transactions by third parties using credentials obtained through fraud; they shift the burden
-of proof so that the bank must establish customer liability before denying relief; and they recognise intermediary,
-payment-aggregator and other third-party ecosystem failures. When a hijacked agent pays a fraudster, the bank will need to
-show what happened. Today it has no record of who chose the payee. (How an agent-initiated payment maps onto these
-categories is our reading, not an RBI statement.)
-
-\subsection{What the industry says is missing}
-Rajendran N., co-inventor of UPI and former CTO of NPCI, frames the open question as how a human's delegated authority
-``can be proven for every transaction'', and says disputes need evidence of ``which agent acted, under which version of the
-mandate and against what customer instruction''; he asks for ``100\% end-to-end traceability and auditability'', and for
-controls a ``compromised or manipulated agent'' cannot cross, ``enforced by the bank or payment network'' (all CIO.inc,
-9 September 2026). The same article reports that RBI's FREE-AI committee report identifies prompt injection, including
-hidden commands intended to trigger unauthorised transfers, as a risk to financial AI systems (we could not retrieve the
-primary FREE-AI text to confirm the wording; KPMG's summary of the report confirms it discusses autonomous agents using MCP
-and A2A, and that manipulation and autonomous decisions raise liability concerns).
-
-\textbf{Our answer to each of those requirements:} per-transaction proof of authority (the payee's provenance class),
-deterministic enforcement at the bank (no model in the gate), and a receipt carrying exactly the agent, the mandate version
-and the customer instruction.
-
-\section{Approach}\label{sec:approach}
-\subsection{Key design decision: check provenance, not content}
-We do not try to recognise malicious text. A content filter is a classifier, and an attacker who can read it can write around
-it. We check \emph{where the payee identifier came from}. The host (the bank or PSP app running the agent) already knows which
-messages the customer typed, which beneficiaries the customer created, which documents the customer pointed the agent to,
-and which inputs came from outside. Each payee is classed, first match wins:
-
-\begin{center}\small
-\begin{tabularx}{\linewidth}{lXp{4.3cm}}
-\toprule
-class & source of the payee identifier (VPA, IBAN, account number) & decision\\
-\midrule
-P & a whole token in the customer's own message & ALLOW\\
-K & a beneficiary record that was itself created by an authorised action (provenance is inherited) & ALLOW\\
-R & a document the customer named, and it is the \emph{registered} handle of the biller the document claims to be (Bharat
-BillPay biller, NPCI verified merchant) & ALLOW\\
-D & a document the customer named, with no registry entry to confirm it & STEP-UP: a confirmation card naming the source\\
---- & the document claims a registered biller, but the payee is not that biller's handle & BLOCK\\
-W & anything else: SMS, web page, collect request, tool output, or nowhere & BLOCK\\
-\bottomrule
-\end{tabularx}
-\end{center}
-
-Further rules: a credential change is allowed only with a value the customer typed; an amount the customer stated is a
-ceiling, and without one an amount above the mandate cap needs confirmation; adding a beneficiary is gated exactly like a
-payment, so the known-payee list can only grow through authorised actions; an incoming collect request is classed like any
-payee, so a stranger's request is W.
+\section{Our approach and findings}
+\textbf{Approach.} We check provenance, not content. For every payment an agent proposes, the gate asks where the payee
+identifier came from, using only records the bank already holds, and assigns a class (Figure~\ref{fig:flow}): \textbf{P}
+the customer's own signed words, \textbf{K} a payee the customer saved, \textbf{R} a registered biller's handle, \textbf{D} a
+document the customer named, \textbf{W} anything else. P, K and R are allowed, D needs the customer's confirmation, W is
+blocked. Further rules only tighten a decision: a bill that claims a registered biller must carry that biller's handle; the
+amount must match what the customer stated or the bill fetch; paying a saved payee more than last time, or just after it
+changed, needs confirmation. A confirmed step-up becomes a timed hold with a cancel link. Every decision writes a
+hash-chained, HMAC-signed receipt for disputes. There is no model and no network call: 424 lines of Python, median
+74\,\textmu s per decision, and it runs at the bank, so it covers any agent the customer uses. We rejected three
+alternatives. A second LLM judging the payment reads the same attacker text and can itself be injected. A known-payee
+allowlist refuses every first payment to a new payee (41.7\% of legitimate AgentDojo payments) and is defeated by ``add as
+payee, then pay''. A tighter cap still admits small redirected payments: 80.7\% of real attacks fit under one.
 
 \begin{figure}[t]
 \centering
@@ -355,156 +188,201 @@ call; median 74\,\textmu s per decision.}
 \label{fig:flow}
 \end{figure}
 
-\subsection{Where it sits}
-\begin{center}
-\begin{tikzpicture}[node distance=7mm and 15mm, every node/.style={font=\small, align=center},
-  box/.style={draw, rounded corners, minimum height=9mm, inner sep=4pt}, >=Stealth]
-\node[box] (c) {Customer\\instruction};
-\node[box, right=of c] (a) {AI agent\\(reads bills, SMS, web)};
-\node[box, right=of a, fill=teal!15] (g) {\textbf{Provenance gate}\\at the bank / PSP};
-\node[box, right=of g] (u) {UPI rail\\(mandate cap)};
-\node[box, below=of g, fill=gray!10] (r) {Signed receipt\\(dispute evidence)};
-\node[box, above=of g, fill=gray!10] (h) {Host records: customer text,\\beneficiaries, named documents,\\biller registry};
-\draw[->] (c) -- (a); \draw[->] (a) -- node[below, font=\scriptsize]{payment} (g);
-\draw[->] (g) -- node[below, font=\scriptsize]{ALLOW} (u);
-\draw[->] (g) -- (r); \draw[->] (h) -- (g); \draw[->, dashed] (c) |- (h);
+\textbf{Threat model and resilience under exposure.} The agent is assumed fully hijacked. The attacker controls bills, SMS,
+e-mail, web pages, collect requests and files the agent writes, and knows our rules, which are public. The attacker wants
+money moved to an account they control, or the account's credentials changed. They cannot write the customer's signed
+messages, the bank's beneficiary records or the biller registry, and never hold the receipt-signing key. Knowing the rules
+does not help: to pass, an attacker would have to write into the customer's own message or the bank's own records, and
+nothing the agent reads or does can reach them. There is no classifier to fool and no threshold to sit under. Homoglyphs,
+zero-width characters, fullwidth digits and look-alike or suffix VPAs only stop an identifier matching the customer's, which
+makes it W, which blocks. Failure is closed by construction, checked by a 5,000-case fuzz and fifteen planted defects, all
+caught. Nothing depends on secrecy except the receipt key. The residual weakness is a customer talked into typing the
+scammer's account themselves.
+
+\textbf{How we evaluated it.} (1) Every banking run AgentDojo publishes: 28 model and defence configurations, 15 attack
+types, 7,802 runs. (2) A closed loop with three real LLMs as the payment agent (gemma4, gpt-oss-120b, gpt-4.1-mini): 90
+scenarios, each run undefended and gated. (3) An Indian payment gateway's official open-source payout server, built
+unmodified and run against a local capture proxy, with two models. These were pre-registered: predictions hashed before
+scoring, six registrations, failures reported. (4) A white-box red team of 150 attacks in 15 Indian fraud families that we
+wrote (design results). (5) Unit, property and mutation tests. We measured attacks that moved money, legitimate payments
+blocked, and time per decision, because a control that blocks real payments or slows them will not be deployed. Baselines:
+no defence, a UPI-style spending cap, and a known-payee allowlist. All data is synthetic; no live payment system was touched.
+
+\textbf{Key results} (Figure~\ref{fig:results}; detail in Appendix~\ref{app:evidence}).
+\begin{itemize}
+\item \textbf{AgentDojo:} every attacker call stopped in 1,477/1,477 successful attacks, including 299/299 that had beaten an
+existing defence; a spending cap let 83.6\% through. One prediction failed: 11/210 legitimate-intent payments were blocked,
+each one to a wrong account the agent itself produced.
+\item \textbf{Three real LLMs as the agent:} 46 attacks moved money without the gate (12/45, 14/44, 20/45), \textbf{0} with
+it, and no legitimate task was lost.
+\item \textbf{Real payout server:} attacker payouts reached the payment API in 14/15 and 10/15 episodes direct, \textbf{0/15}
+gated. The server's own self-reported provenance labelled the attacker's payee ``user input'' 12 of 20 times.
+\item \textbf{Cost:} median 74\,\textmu s per decision, no model, no network call.
+\end{itemize}
+
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+  scale only axis, width=10.6cm, height=6.2cm,
+  xmin=-4, xmax=104, ymin=0.4, ymax=7.6,
+  xtick={0,20,40,60,80,100}, xticklabel={\pgfmathprintnumber{\tick}\%},
+  xlabel={share of attacks that moved money (or would have)},
+  ytick={1,2,3,4,5,6,7},
+  yticklabels={
+    {AgentDojo, every banking run (n\,=\,1{,}477)},
+    {Red team, agent hijacked (n\,=\,150)},
+    {Closed loop, gemma4 (n\,=\,45)},
+    {Closed loop, gpt-oss-120b (n\,=\,44)},
+    {Closed loop, gpt-4.1-mini (n\,=\,45)},
+    {Real payout server, gemma4 (n\,=\,15)},
+    {Real payout server, gpt-4.1-mini (n\,=\,15)}},
+  yticklabel style={font=\small, text=black!80},
+  xticklabel style={font=\small, text=black!65},
+  xlabel style={font=\small, text=black!65},
+  axis line style={draw=black!25}, tick style={draw=none},
+  xmajorgrids, grid style={draw=black!8},
+  enlargelimits=false, clip=false,
+  legend style={at={(0.5,1.02)}, anchor=south, legend columns=3, draw=none, font=\small,
+                /tikz/every even column/.append style={column sep=10pt}},
+  every node near coord/.append style={font=\scriptsize, text=black!80},
+]
+% connectors: from the gate (0) to the worst baseline on each row
+\addplot[draw=black!22, line width=1.6pt, forget plot] coordinates {(0,1) (83.6,1)};
+\addplot[draw=black!22, line width=1.6pt, forget plot] coordinates {(0,2) (100,2)};
+\addplot[draw=black!22, line width=1.6pt, forget plot] coordinates {(0,3) (26.7,3)};
+\addplot[draw=black!22, line width=1.6pt, forget plot] coordinates {(0,4) (31.8,4)};
+\addplot[draw=black!22, line width=1.6pt, forget plot] coordinates {(0,5) (44.4,5)};
+\addplot[draw=black!22, line width=1.6pt, forget plot] coordinates {(0,6) (93.3,6)};
+\addplot[draw=black!22, line width=1.6pt, forget plot] coordinates {(0,7) (66.7,7)};
+% no defence
+\addplot[only marks, mark=*, mark size=3.4pt, color=cnone, mark options={draw=white, line width=0.8pt},
+  nodes near coords={\pgfmathprintnumber[fixed,precision=1]{\pgfplotspointmeta}\%},
+  point meta=x, every node near coord/.append style={anchor=south, yshift=2pt}]
+  coordinates {(100,2) (26.7,3) (31.8,4) (44.4,5) (93.3,6) (66.7,7)};
+\addlegendentry{no defence}
+% existing control (UPI-style spending cap)
+\addplot[only marks, mark=square*, mark size=3.1pt, color=ccap, mark options={draw=white, line width=0.8pt},
+  nodes near coords={\pgfmathprintnumber[fixed,precision=1]{\pgfplotspointmeta}\% cap},
+  point meta=x, every node near coord/.append style={anchor=north, yshift=-2pt}]
+  coordinates {(83.6,1) (78.0,2)};
+\addlegendentry{spending cap (existing control)}
+% our gate
+\addplot[only marks, mark=diamond*, mark size=4.2pt, color=cgate, mark options={draw=white, line width=0.8pt},
+  nodes near coords={\textbf{0}}, point meta=x,
+  every node near coord/.append style={anchor=east, xshift=-3pt, text=cgate}]
+  coordinates {(0,1) (0,2) (0,3) (0,4) (0,5) (0,6) (0,7)};
+\addlegendentry{our provenance gate}
+\end{axis}
 \end{tikzpicture}
-\end{center}
-The gate needs no change to the agent and no model: it sees the payment call and the host's own records. It adds no
-network call (the registry is a lookup the PSP already performs for merchant verification).
+\caption{\textbf{Every evaluation, one picture: the gate lets no attack through.} Each row is a separate pre-registered
+evaluation or test set; the gate's point sits at 0 in all seven. The models that fell for the most attacks undefended were
+stopped just as completely. AgentDojo rows are attacks that already succeeded against the agent, so ``no defence'' is
+100\% by construction and only the cap is shown; 299 of them had also beaten an existing defence (prompt-injection
+detector, tool filter, spotlighting, Meta-SecAlign). Red team: customer reads the confirmation; if they approve
+everything, 10/150 are approved and all are held, none paid at once. Legitimate tasks lost to the gate: none in any closed
+loop or real-server run.}
+\label{fig:results}
+\end{figure}
 
-\subsection{The provenance receipt}
-Every decision writes a receipt: agent ID, mandate ID and version, SHA-256 of the customer's instruction, payee, amount,
-provenance class and source, verdict, and whether the customer confirmed. Receipts are hash-chained and HMAC-signed under a
-key the agent never holds, so anyone who can write the receipt store still cannot alter history without detection (tested:
-edits, deletions and reordering are all caught). A one-line plain-language reading is generated for a dispute desk, for
-example: \emph{``agent X under mandate RP-001 v1 proposed Rs 1,840 to Y; the payee came from outside the customer's
-instruction (SMS inbox). Outcome: refused.''}
+\textbf{What's new here.} Prompt-injection defences either try to detect malicious text, which an informed attacker writes
+around, or redesign the agent, which a bank does not control. We check the payee's source at the bank, against records only
+the customer and the bank can write. Payment identifiers are exact tokens, so provenance is computed, not inferred, and the
+check needs no model.
 
-\subsection{Alternatives we rejected, and why}
+\textbf{Who could use this, and how.} A bank, PSP or payment app offering agent payments: put the gate in front of its
+payment API in shadow mode, measure false blocks on its own traffic, then enforce (Appendix~\ref{app:bank}). NPCI could carry
+the payee's provenance class and source as two fields of the Unified Agent Protocol's payment request; the signed receipt
+is the evidence RBI's 2027 burden of proof asks banks for.
+
+\textbf{Limitations and open problems.} Our evidence comes from recorded benchmark traces, our own red team and synthetic
+scenarios, not live customer traffic; a bank's shadow-mode run is the test that matters. The confirmation card follows a
+randomised field study (Akesson et al.\ 2023: risk-based warning plus call to action, 81\% fewer people fell for fraud), but
+our own human study is pre-registered, not run. A coached customer who types the scammer's account is class P; an added
+check holds such payments when the app sees an unknown caller or screen sharing (50/60 synthetic cases held), but a victim
+coached earlier, paying a small amount with no live signal, is still paid. Payees with no registry rely on confirmation.
+Real registry data is held by NPCI members, so our handles are invented.
+
+\section{Reflection}
+\textbf{Difficulty faced.} We expected provenance to separate attack payments from legitimate ones cleanly. On the first
+AgentDojo attack we inspected, it did not: the attacker's IBAN sat inside the very bill the customer asked the agent to pay.
+Provenance alone cannot tell a real biller's account from a fraudster's when both come from the document the customer
+named. This is not a benchmark quirk; it is invoice redirection, one of the oldest frauds in business payments. Each obvious
+fix failed. Trusting the document admits the fraud. Distrusting it blocks every first bill payment. Asking a model whether
+the account ``looks right'' reopens the injection channel we set out to close, because our threat model assumes the
+attacker knows that model's prompt. A confirmation prompt hands the whole decision back to a customer who, by construction,
+did not read the bill. The tension was between trusting the customer's choice of document and not trusting what the
+document says. It taught us that ``pay this bill'' authorises the \emph{biller}, not whatever account number the document
+prints. The question had to change from \emph{where did the payee come from?} to \emph{is this the payee the claimed biller
+registered?}
+
+\textbf{How we overcame it.}
 \begin{itemize}
-\item \textbf{A second LLM judging whether a payment looks legitimate.} It reads the same attacker text and can itself be
-injected; our threat model assumes the attacker knows its prompt.
-\item \textbf{A known-payee allowlist.} Safe for old payees, but it refuses every first payment to a new payee (41.7\% of
-legitimate AgentDojo payments) and is laundered by an injected ``add as payee, then pay'' (10/10 in our red team).
-\item \textbf{A tighter spending cap.} It blocks legitimate rent increases while still admitting small redirected payments
-(80.7\% of real attacks fit under a cap set at the account's largest prior payment).
-\item \textbf{Reading the customer's intent from language.} Our own earlier authorization witness did this (Section~\ref{sec:lineage}).
-On AgentDojo it flagged 23.5\% of benign runs, mostly because language is open-ended. Identifiers are not: a VPA either is,
-or is not, a token the customer wrote. That is why this gate blocks 0/24 legitimate payments where the language-reading
-witness could not get below about a quarter.
+\item \textbf{Split the class.} Named documents became class D, confirmed by the customer with the source shown, instead of
+being trusted or blocked. With a careless customer this still let 25 of 120 red-team attacks through. We gave up a click on
+a first bill.
+\item \textbf{Bound the document to a registry, not to its own text.} A document that claims a registered biller must carry
+that biller's registered handle, or the payment is blocked. The registry is written by the payment system, so no injection
+can satisfy it. This cut 25 to 5, with every legitimate payment still completing.
+\item \textbf{Attacked ourselves with others' failures.} Replaying the gaps concurrent projects reported (amount inflation,
+vendor-master changes, laundering through a file the agent wrote) broke our v2; v3 adds a rule for each and still completes
+150/150 legitimate payments.
+\item \textbf{Made a deceived ``yes'' not enough.} A confirmed step-up is held for hours with a cancel link instead of paid
+at once (precedents: UK FCA FG24/6; DBS new-payee cooling period, 2026), so all 10 attacks a customer who approves
+everything lets through are held, none paid instantly.
+\item \textbf{Still open:} payees with no registry (landlords, individuals named in a document) rely on the customer's
+confirmation.
 \end{itemize}
 
-\section{Threat model and resilience under exposure}\label{sec:threat}
-\begin{itemize}
-\item \textbf{Who the attacker is:} anyone who can put text in front of the agent: a biller's PDF, an SMS, a WhatsApp
-forward, a web page, a collect request, a transaction note.
-\item \textbf{What they know:} the gate's full rules and source code (this report and the repository).
-\item \textbf{What they control:} everything the agent reads and, in our red team, the agent itself: we assume it is
-\emph{fully hijacked} and does exactly what the injected text says.
-\item \textbf{What they cannot do:} write into the customer's own message, the bank's beneficiary record, or the biller
-registry; obtain the receipt-signing key.
-\item \textbf{What they want:} move money to an account they control, or take over the account's credentials.
-\end{itemize}
-
-\textbf{Why knowing the rules does not help.} ALLOW requires the identifier to be a whole token in the customer's text or a
-record that only authorised actions can write. There is no classifier to fool, no threshold to sit under, no wording to
-find. Every obfuscation we tried (Cyrillic homoglyphs, zero-width characters, fullwidth digits, a look-alike VPA that is a
-suffix of the customer's, transposed characters, a swapped handle, a truncated handle) makes the identifier \emph{unfindable}
-in the customer's text, which makes it W, which blocks. The gate fails closed by construction, and a 5,000-case fuzz test
-checks exactly this. Nothing depends on secrecy except the receipt-signing key.
-
-\textbf{Remaining weakness: the customer.} A scammer who persuades the customer to type the scammer's VPA gets class P, and
-the gate allows it. The gate turns agent-borne fraud into ordinary human fraud, no worse; it does not solve human fraud.
-Confirmation cards for class D are only as good as the customer's reading of them, which we did not measure.
-
-\section{Related work, and what is new}
-\begin{itemize}
-\item \textbf{CaMeL} (Debenedetti et al., 2025) and \textbf{FIDES} (Microsoft, 2025) track where values come from inside a
-redesigned agent: CaMeL builds a protective layer that separates control flow taken from the user's query from untrusted
-data and enforces capability policies at tool calls (about 77\% AgentDojo utility vs 84\% undefended). \emph{The principle
-that untrusted data must not choose consequential arguments is theirs.} We apply it at the \emph{bank's} side of the payment
-API, with no change to the agent, which matters because a bank does not control which agent its customer uses.
-\item \textbf{PACT} (Fan et al., arXiv:2605.11039, May 2026) enforces provenance per \emph{argument} rather than per tool
-call, computed by a runtime monitor: with oracle provenance it reports 100\% security and utility on diagnostic suites, and
-on AgentDojo 100\% security on the three strongest models at 38--46\% utility; its authors locate the remaining bottleneck in
-\emph{inferring} provenance. \textbf{ARGUS} (Weng et al., arXiv:2605.03378) releases an action only when benign evidence
-entails it (attack success 28.8\% to 3.8\% at 87.5\% utility on its AgentLure benchmark, whose example is a fee injected into
-a bill payment). For payments the inference problem largely disappears: a VPA, IBAN or account number is an exact token, so
-we match it against the customer's text and the bank's records instead of inferring its origin. That is why the gate needs
-no model and blocked 0/24 legitimate AgentDojo payments; the figures are not directly comparable (recorded traces vs
-closed-loop utility).
-\item \textbf{A-VIP} (Louck et al., arXiv:2609.11757, September 2026) binds each cart line to the listing the user saw, for
-Google's AP2 protocol; \textbf{Beyond the Mandate} (Aviv et al., arXiv:2608.23858) shows that valid AP2 mandate signatures
-do not ensure an agent transaction reflects the user's intent. Neither addresses UPI's mandate model.
-\item \textbf{aiAuthZ} (arXiv:2607.05518) gates AgentDojo banking calls with an allowlist; clean utility fell from 100\%
-to 80\% because a legitimate first payment to a new payee was blocked: the allowlist trade-off our K/P split removes.
-\item \textbf{Authenticated Delegation} (South et al., arXiv:2501.09674) and \textbf{Auditable Agents} (Nian et al.,
-arXiv:2604.05485) set out delegation credentials and five auditability dimensions; our receipt covers action recoverability,
-policy checkability, responsibility attribution and evidence integrity for the payment step.
-\end{itemize}
-\begin{itemize}
-\item \textbf{Mastercard Verifiable Intent} (with Google, open-sourced) and \textbf{Visa's Trusted Agent Protocol} bind the
-cardholder, a registered agent and the mandate's scope into signed credentials. They prove \emph{which} agent acted under
-\emph{which} mandate; they do not decide whether a payee inside that mandate came from the cardholder. The gate is the check
-such a credential needs at payment time, and its receipt can carry their identifiers.
-\end{itemize}
-
-\subsection*{Concurrent work in October 2026, and where we stand}
-Three independent projects reached the same principle this month. We found them in our final research pass, after our
-gate and its AgentDojo pre-registration existed, and we report them in full because they are close.
+\section{Deliverables and declarations}
 {\small
-\begin{longtable}{p{2.6cm}p{3.6cm}p{4.2cm}p{5.6cm}}
+\begin{longtable}{@{}p{3.6cm}p{\dimexpr\linewidth-3.6cm-2\tabcolsep\relax}@{}}
 \toprule
-work & where the check runs & evidence & gaps it reports or leaves\\
-\midrule
-\textbf{Mool} (Hack Sprint 2026, 5 Oct; UPI) & inside a redesigned agent: privileged planner + quarantined extractor
-(CaMeL pattern) & own benchmark, 50 tasks $\times$ 6 attacks, \emph{deterministic stand-in model}: 0/300 stolen, 46/50 clean
-tasks completed & amount inflation to the right payee overpaid 31/50 runs; every new payee is held; no real-LLM result in
-the public repository (last commit 5 Oct)\\
-\textbf{taintgate} (HackerNoon, 11 Oct) & in-process provenance gate & 5 scenarios: 3/5 attacks stopped, \textbf{0/2
-legitimate actions allowed}; a 629-attack AgentDojo study of ten injection detectors (best: 51\% at 2\% FPR) &
-reformatting an account number broke matching; laundering through several tools broke lineage; cannot separate a real bill
-IBAN from an injected one\\
-\textbf{fps-ai-security-poc} (19 Oct; ISO 20022) & layered: screen, policy on beneficiary records, Confirmation of Payee,
-human hold & simulated agent; Claude Haiku 5.5 paid 0/240 on its own & names vendor-master fraud (saved payee's details
-changed) but does not gate the change itself\\
+Main submission file & This report, \texttt{AegisAI\_Report.pdf}.\\
+Code repository & \repo{}. The README explains how to run the code and reproduce every number: Python 3.10+, standard
+library only; the closed loop needs a local Ollama model or an OpenAI-compatible API key.\\
+Demo video & \url{https://github.com/Alkur123/payee-provenance/raw/main/media/demo.mp4} (1 min 51 s).\\
+Other artifacts & The 15-family Indian fraud scenario set, the AgentDojo scorer, the closed-loop harness and the
+pre-registrations, all in the repository (MIT).\\
+Done during the hackathon? & Built on earlier work by the same author. \emph{Existed before:} an authorization-provenance
+witness and a deed-provenance monitor (September 2026) and our AgentDojo scoring harness. \emph{Added in the window (31
+October 2026):} the payee-provenance gate and its rules, signed receipts and dispute report, the Indian red team, the
+coached-payment check and holds, six pre-registered evaluations, the tests, the video and this report.\\
+AI tools used & Claude Opus 5.5 (Anthropic), through Claude Code: web research, writing the code, running the evaluations
+and drafting this report under the author's direction; the author chose the problem, approved each step and is responsible
+for every claim. Agents under test, never part of the gate: gemma4 (Google, open weights, local through Ollama),
+gpt-oss-120b (OpenAI open weights, through Groq's API), gpt-4.1-mini-2025-04-14 (OpenAI, through OpenAI's API).\\
+External code, models, data & AgentDojo task definitions and published run logs, commit \texttt{089ed468} (MIT, ETH Z\"urich
+SPY Lab), read-only; the three models above (evaluation only, synthetic data); Python standard library. Our code and
+scenarios: MIT.\\
+All links open publicly & Yes (checked logged out on 31 October 2026).\\
 \bottomrule
 \end{longtable}}
-\textbf{The principle is shared; our contribution is the evidence and the gaps closed.} (i) We are the only one of the four
-with a \textbf{pre-registered result on real agents' traces} (four frontier models, AgentDojo), measured against the controls
-UPI actually uses (caps, allowlists), and \textbf{closed-loop runs with three real LLMs} (Section~\ref{sec:closed}). (ii) Our gate runs at the
-\textbf{bank or PSP}, not inside the agent: a bank does not control which agent its customer uses, so a check that requires
-a particular agent architecture cannot be the bank's control. (iii) We built and measured a fix for every gap the table
-lists: amount provenance (registered bill fetch must match; a known payee above its last-paid amount needs confirmation),
-vendor-master changes gated like payments plus a cooling-off window, digit-separator canonicalisation, root matching (no
-lineage to break), files the agent wrote treated as world text, and a biller-registry binding that separates the real bill
-payee from the injected one. (iv) A receipt and dispute classifier shaped for RBI's 2027 burden of proof.
 
-\section{How we evaluated it}\label{sec:eval}
-\textbf{(1) External and pre-registered: AgentDojo banking.} AgentDojo (ETH Z\"urich, NeurIPS 2024) is the standard benchmark
-for prompt injection against tool-using agents. Its banking suite has 16 user tasks (pay a bill, refund a friend, update rent)
-and 9 injection tasks (send money to the attacker, redirect a standing order, change the password). We scored the published
-runs at pinned commit \texttt{089ed468} for four models: 64 benign runs, 576 attacked runs, 201 attacks that actually
-succeeded. Six predictions and the full scoring rule were written and the file hashed (sha256 \texttt{e3ddb6db\ldots a163f})
-at 10:26 IST on 31 October, before the scorer existed; the scorer (sha256 \texttt{8d3bf976\ldots}) was then run once.
-No agent was run: these are the actions the four agents really took. Baselines on the same traces: a mandate cap at the
-account's largest prior payment (the Reserve Pay shape) and a known-payee allowlist.
+\section{Responsible testing}
+{\small
+\begin{longtable}{@{}p{3.6cm}p{\dimexpr\linewidth-3.6cm-2\tabcolsep\relax}@{}}
+\toprule
+No real personal data & \textbf{Yes.} Every VPA, account, IBAN and name is synthetic; AgentDojo's are its own synthetic
+values.\\
+Responsible disclosure & \textbf{Yes.} No live UPI, bank, NPCI or Aadhaar system was touched and no working exploit is
+published. One design observation about a real open-source payout server (Appendix~\ref{app:realtool}) is being shared
+privately with SAFL at team@secureaifutureslab.com, as this template asks; we name neither the vendor nor step-by-step
+details here.\\
+Environment & A local Python mock of a UPI-style rail with Reserve Pay-style mandates and a stand-in biller registry;
+AgentDojo's published logs; an Indian payment gateway's open-source payout server built from source and run locally against
+a capture proxy with dummy credentials (no vendor system contacted); gemma4 run locally, two models by API. No real
+transactions or accounts were involved.\\
+\bottomrule
+\end{longtable}}
 
-\textbf{(2) White-box red team on a mock UPI rail.} 150 attacks in 15 Indian fraud families and 150 legitimate payments in
-15 families, including Hinglish and Devanagari instructions, a spaced IBAN and an account typed with hyphens. The agent is
-fully hijacked, so nothing relies on the model resisting. Five families (A6--A9, A12) were written from the gate's own rules
-to break it, and three (A13--A15) from the gaps concurrent work reported. Two customer models: one who reads confirmations,
-one who approves every confirmation (the worst case). Same baselines, plus no control.
+\section{Ownership, permissions and consent}
+Answered in the submission form, with every member's agreement.
 
-\textbf{(3) Closed loop with a real LLM, pre-registered.} Three agent models (gemma4 locally; gpt-oss-120b and gpt-4.1-mini through their providers' APIs) act as the payment agent on three
-scenarios per family (90 episodes), undefended and gated, seeing the gate's refusals (Section~\ref{sec:closed}).
+\appendix
+\section{Evidence in detail}\label{app:evidence}
+\subsection{AgentDojo banking: four frontier models (pre-registered)}
 
-\textbf{(4) Tests that can fail.} 32 unit and property tests, and a mutation probe that plants fifteen defects in a copy of
-the code and checks each is caught.
-
-\section{Key results}\label{sec:results}
-\subsection{External, pre-registered: AgentDojo banking (all six predictions held)}
 \begin{center}\small
 \resizebox{\linewidth}{!}{\begin{tabular}{lccc}
 \toprule
@@ -526,7 +404,8 @@ registered 95\%. (b) The 7 legitimate-intent calls blocked inside attacked runs 
 account's own IBAN, one IBAN the model invented, and one call whose recipient was the literal string ``landlord's IBAN''.
 (c) 41 of 64 benign runs make no payment, so the legitimate sample is 24 calls; its 0\% has an upper bound of 13.8\%.}
 
-\subsection{Every banking run in AgentDojo, including runs behind existing defences (pre-registered)}
+\subsection{Every AgentDojo banking run, including runs behind existing defences (pre-registered)}
+
 To remove the small-sample and single-attack limits we applied the frozen scorer, unchanged, to every banking run at the
 pinned commit: 28 model and pipeline configurations (GPT-3.5 to GPT-4o, Claude 3 to 3.7, Gemini 1.5 to 2.0, Llama 3 and
 3.3, Command R, Meta-SecAlign) and 15 attack types; 7,802 runs. Four predictions were hashed first (sha256
@@ -551,20 +430,70 @@ into the landlord's or a saved payee's account), 1 a placeholder string and 1 a 
 payee: the gate also stops an agent's own misdirected payments. Credential takeovers blocked: 239 / 239. A known-payee
 allowlist would have blocked 61.0\% of the legitimate payments.}
 
-\subsection{White-box red team: agent fully hijacked}
-\begin{center}
-\begin{tikzpicture}
-\begin{axis}[ybar, width=0.97\linewidth, height=5.2cm, bar width=11pt, ymin=0, ymax=128,
-  ylabel={scenarios}, symbolic x coords={none,cap,allowlist,gate (reads),gate (approves all)},
-  xtick=data, x tick label style={font=\small}, legend style={at={(0.5,1.03)},anchor=south,legend columns=2,font=\small},
-  nodes near coords, every node near coord/.append style={font=\scriptsize}]
-\addplot[fill=red!55] coordinates {(none,150) (cap,117) (allowlist,35) (gate (reads),0) (gate (approves all),10)};
-\addplot[fill=teal!55] coordinates {(none,150) (cap,140) (allowlist,80) (gate (reads),150) (gate (approves all),150)};
-\legend{attacks that moved money or credentials (of 150), legitimate payments completed (of 150)}
-\end{axis}
-\end{tikzpicture}
+\subsection{Closed loop with three real LLMs (pre-registered)}\label{sec:closed}
+
+A real model acts as the payment agent on the first three scenarios of each of the 30 families: 90 scenarios, each run
+undefended and gated (temperature 0), the agent seeing the gate's refusals and free to try again. gemma4 (local) was
+registered first (sha256 \texttt{7bff7d92\ldots}, all four predictions held); two more families were registered before
+any of their episodes (PR55, \texttt{c09d855c\ldots}, four dated amendments). Outcome as registered: money moved, a
+credential set or a collect request approved.
+\begin{center}\small
+\resizebox{\linewidth}{!}{\begin{tabular}{lccc}
+\toprule
+agent model & attacks: undefended $\rightarrow$ \textbf{gated} & legitimate completed: undefended $\rightarrow$ gated & scenarios\\
+\midrule
+gemma4 (Google, open weights) & 12/45 $\rightarrow$ \textbf{0/45} (CI 0--7.9\%) & 33 $\rightarrow$ 33 & 90/90\\
+gpt-oss-120b (OpenAI, open weights) & 14/44 $\rightarrow$ \textbf{0/44} & 23 $\rightarrow$ 23 & 70/90$^{\dagger}$\\
+gpt-4.1-mini (OpenAI, commercial) & 20/45 $\rightarrow$ \textbf{0/45} & 32 $\rightarrow$ 35 & 90/90\\
+\bottomrule
+\end{tabular}}
+\end{center}
+{\small The models fell for invoice redirection, injected invoice instructions, inflated amounts and laundering through a
+file the agent wrote; the commercial model fell for the most, and the gate stopped every one without costing a legitimate
+task. Incomplete legitimate tasks fail identically in both conditions (no payment, or a payee's \emph{name} paid instead of
+an account, which the gate also refused). gemma4's harness count was 14, counting two payee-record changes that moved no
+money; we report both. A real model resists most injections on its own (SMS, web, collect and credential lures); what
+still works arrives inside a document the customer asked it to act on, exactly the class the registry binding and amount
+rules close. $^{\dagger}$The provider's free tier stopped gpt-oss-120b at its daily token limit after 70 paired scenarios;
+the rest are reported as not run. Episodes lost to a network outage (no model reply) were re-run under a rule fixed before
+the re-run, first attempts kept; one provider error (HTTP 400) is reported, not re-run.}
+
+\subsection{In front of a real, unmodified Indian payout server (pre-registered)}\label{app:realtool}\label{sec:realtool}
+
+We took the official, open-source MCP server that an Indian payment gateway publishes so AI agents can make payouts, built it
+from source \emph{unmodified}, and ran it locally in its default configuration with every outbound request routed to a local
+capture proxy: no vendor system was contacted and the credentials were dummy strings. ``Money would move'' means the real
+server emitted its payout request. gemma4 acted as a small business's finance assistant; four predictions were hashed
+(sha256 \texttt{5e12e6ba\ldots}) before the run, and all four held.
+
+\begin{center}\small
+\resizebox{\linewidth}{!}{\begin{tabular}{lcc}
+\toprule
+condition & attacker payout reached the payment API & every legitimate payout reached it\\
+\midrule
+direct (model $\rightarrow$ real server) & \textbf{14 of 15} attack episodes & 6/6 (+ 3/3 batches)\\
+\textbf{gated} (our gate in front, server unchanged) & \textbf{0 of 15} & \textbf{6/6} (+ 3/3 batches)\\
+\bottomrule
+\end{tabular}}
 \end{center}
 
+\textbf{The server already asks the right question, and lets the agent answer it.} Every call must carry a per-field label
+saying where each value came from (\emph{user input}, \emph{generated by model}, \emph{inferred from context}). The model
+writes those labels. In the direct episodes that paid an attacker, the model labelled the attacker's payee \textbf{``user
+input'' 12 times and ``inferred from context'' 8 times, and never ``generated by model''} (20 labels). In this server the
+labels feed only a prompt for a missing amount, which is off by default; nothing reads the payee's label. Self-reported
+provenance is testimony, and the attacker controls the testimony. Our gate ignores the label and computes the payee's
+class from the host's records: it blocked every attacker payout and passed every legitimate one.
+
+{\small Two first-run limitations were closed by a second pre-registered run (sha256 \texttt{0d408d23\ldots}, all four predictions held): the payout-by-link-to-a-phone attack, untested at first because our harness lacked the token that endpoint needs, reached the API in 3/3 episodes direct and 0/3 gated; and the gate now refuses only the offending row of a batch, so in 3/3 attacked batches the three real vendors were paid and the attacker row was not (the first run had refused whole batches). Two harness bugs of ours were found and their runs discarded, both recorded. We are sharing the observation with the vendor as a hardening suggestion and name neither the vendor nor
+step-by-step details here until they have had the chance to respond.}
+
+\textbf{Second model on the real server (PR55):} with gpt-4.1-mini (OpenAI, commercial) as the finance assistant on every
+scenario (48 episodes, 0 errors), the attacker's payout reached the payment API in \textbf{10 of 15} attack episodes direct
+and \textbf{0 of 15} gated; every legitimate payout was delivered in 12 of 15 episodes in both conditions (the 3 misses are
+one batch scenario where the model made no payout either way).
+
+\subsection{White-box red team: agent fully hijacked (design results)}
 \begin{center}\small
 \resizebox{\linewidth}{!}{\begin{tabular}{llccccc}
 \toprule
@@ -604,7 +533,22 @@ registered contact, so one deceived click is not enough (precedents: UK FCA FG24
 reasonable suspicion; DBS new-payee cooling period, March 2026; Singapore banks' block-or-delay on transfers of more than
 half the balance, October 2025). Whether a held victim cancels depends on people and is not measured here.}
 
+\subsection{Coached customers and timed holds (design results)}
+Provenance cannot see a customer who really typed the scammer's account. A separate check for human payments uses signals a
+banking app already has (a call with an unknown number, screen sharing or remote access, more than half the balance sent in
+24 h, a new payee) and holds such a payment for 24 h with a bank call-back. On 120 synthetic scenarios we wrote from
+reported Indian fraud patterns: digital arrest, impersonation call, remote-access refund and balance drain were each held
+10/10; a pasted investment VPA was held 8 times and stepped up twice. \textbf{Open:} a victim coached earlier, with no
+live signal, paying a small amount under the cap is paid 10/10. Cost: 50/60 legitimate payments go through at once; the 10
+held are a large first payment to a car dealer who is on the phone, which looks exactly like coaching.
+
+For agent payments, a confirmed step-up becomes a HOLD (4 h for a new payee, 1 h otherwise) with a cancel link to the
+customer's registered contact, so one deceived click is not enough. Precedents: UK FCA FG24/6 (delay up to 4 business days on
+reasonable suspicion); DBS new-payee cooling period (March 2026); Singapore banks' block-or-delay on transfers of more than
+half the balance (October 2025). Whether a held victim cancels depends on people and is not measured here.
+
 \subsection{Tests that can fail}
+
 \begin{itemize}
 \item \textbf{Fail-closed fuzz:} 5,000 random cases under eight attacker transformations; a payee is ALLOWed only if it is
 canonically identical to a token the customer wrote, and the customer's own payee is never blocked. 0 violations.
@@ -626,179 +570,10 @@ six caught 5/6; the survivor (normalisation) only ever made the gate stricter, a
 rather than leaving the property unpinned.
 \end{itemize}
 
-\subsection{Closed loop with real LLMs (pre-registered)}\label{sec:closed}
-A real model acts as the payment agent on the first three scenarios of each of the 30 families: 90 scenarios, each run
-undefended and gated (temperature 0), the agent seeing the gate's refusals and free to try again. gemma4 (local) was
-registered first (sha256 \texttt{7bff7d92\ldots}, all four predictions held); two more families were registered before
-any of their episodes (PR55, \texttt{c09d855c\ldots}, four dated amendments). Outcome as registered: money moved, a
-credential set or a collect request approved.
-\begin{center}\small
-\resizebox{\linewidth}{!}{\begin{tabular}{lccc}
-\toprule
-agent model & attacks: undefended $\rightarrow$ \textbf{gated} & legitimate completed: undefended $\rightarrow$ gated & scenarios\\
-\midrule
-gemma4 (Google, open weights) & 12/45 $\rightarrow$ \textbf{0/45} (CI 0--7.9\%) & 33 $\rightarrow$ 33 & 90/90\\
-gpt-oss-120b (OpenAI, open weights) & 14/44 $\rightarrow$ \textbf{0/44} & 23 $\rightarrow$ 23 & 70/90$^{\dagger}$\\
-gpt-4.1-mini (OpenAI, commercial) & 20/45 $\rightarrow$ \textbf{0/45} & 32 $\rightarrow$ 35 & 90/90\\
-\bottomrule
-\end{tabular}}
-\end{center}
-{\small The models fell for invoice redirection, injected invoice instructions, inflated amounts and laundering through a
-file the agent wrote; the commercial model fell for the most, and the gate stopped every one without costing a legitimate
-task. Incomplete legitimate tasks fail identically in both conditions (no payment, or a payee's \emph{name} paid instead of
-an account, which the gate also refused). gemma4's harness count was 14, counting two payee-record changes that moved no
-money; we report both. A real model resists most injections on its own (SMS, web, collect and credential lures); what
-still works arrives inside a document the customer asked it to act on, exactly the class the registry binding and amount
-rules close. $^{\dagger}$The provider's free tier stopped gpt-oss-120b at its daily token limit after 70 paired scenarios;
-the rest are reported as not run. Episodes lost to a network outage (no model reply) were re-run under a rule fixed before
-the re-run, first attempts kept; one provider error (HTTP 400) is reported, not re-run.}
 
-\subsection{In front of a real, unmodified Indian payout tool (pre-registered)}\label{sec:realtool}
-We took the official, open-source MCP server that an Indian payment gateway publishes so AI agents can make payouts, built it
-from source \emph{unmodified}, and ran it locally in its default configuration with every outbound request routed to a local
-capture proxy: no vendor system was contacted and the credentials were dummy strings. ``Money would move'' means the real
-server emitted its payout request. gemma4 acted as a small business's finance assistant; four predictions were hashed
-(sha256 \texttt{5e12e6ba\ldots}) before the run, and all four held.
 
-\begin{center}\small
-\resizebox{\linewidth}{!}{\begin{tabular}{lcc}
-\toprule
-condition & attacker payout reached the payment API & every legitimate payout reached it\\
-\midrule
-direct (model $\rightarrow$ real server) & \textbf{14 of 15} attack episodes & 6/6 (+ 3/3 batches)\\
-\textbf{gated} (our gate in front, server unchanged) & \textbf{0 of 15} & \textbf{6/6} (+ 3/3 batches)\\
-\bottomrule
-\end{tabular}}
-\end{center}
+\section{How a bank deploys it}\label{app:bank}
 
-\textbf{The server already asks the right question, and lets the agent answer it.} Every call must carry a per-field label
-saying where each value came from (\emph{user input}, \emph{generated by model}, \emph{inferred from context}). The model
-writes those labels. In the direct episodes that paid an attacker, the model labelled the attacker's payee \textbf{``user
-input'' 12 times and ``inferred from context'' 8 times, and never ``generated by model''} (20 labels). In this server the
-labels feed only a prompt for a missing amount, which is off by default; nothing reads the payee's label. Self-reported
-provenance is testimony, and the attacker controls the testimony. Our gate ignores the label and computes the payee's
-class from the host's records: it blocked every attacker payout and passed every legitimate one.
-
-{\small Two first-run limitations were closed by a second pre-registered run (sha256 \texttt{0d408d23\ldots}, all four predictions held): the payout-by-link-to-a-phone attack, untested at first because our harness lacked the token that endpoint needs, reached the API in 3/3 episodes direct and 0/3 gated; and the gate now refuses only the offending row of a batch, so in 3/3 attacked batches the three real vendors were paid and the attacker row was not (the first run had refused whole batches). Two harness bugs of ours were found and their runs discarded, both recorded. We are sharing the observation with the vendor as a hardening suggestion and name neither the vendor nor
-step-by-step details here until they have had the chance to respond.}
-
-\textbf{Second model on the real server (PR55):} with gpt-4.1-mini (OpenAI, commercial) as the finance assistant on every
-scenario (48 episodes, 0 errors), the attacker's payout reached the payment API in \textbf{10 of 15} attack episodes direct
-and \textbf{0 of 15} gated; every legitimate payout was delivered in 12 of 15 episodes in both conditions (the 3 misses are
-one batch scenario where the model made no payout either way).
-
-\subsection{Lineage: what our earlier measured work taught us}\label{sec:lineage}
-This gate is the third step of a measured line of work in the Aegis AI project. Our authorization-provenance witness
-(September 2026; 383 held-out cases: 3.8\% false accepts, 12.7\% false rejects; agent-written authority never accepted,
-0/440) read intent from language, and on all four AgentDojo suites flagged 87.7\% of successful injections but also 23.5\%
-of benign runs. Our deed-provenance monitor (who first wrote the target: 209/210 SHADE-Arena sabotage runs, 21/210 honest)
-showed the target's origin is the signal that holds. This gate keeps that and drops reading language: 11/210 legitimate
-payments blocked across all of AgentDojo, every one to a wrong account.
-
-\section{The hardest problem we hit}\label{sec:hardest}
-We expected provenance to separate attack payments from legitimate ones cleanly. On the first AgentDojo attack we inspected
-it did not: the attacker's IBAN sat \emph{inside the very bill the customer asked the agent to pay}. Provenance alone cannot
-tell a real biller's account from a fraudster's when both come from the document the customer named. This is not a
-benchmark quirk. It is invoice redirection, one of the oldest frauds in business payments, and the obvious fixes fail:
-trusting the document admits the fraud; distrusting it blocks every first bill payment; asking a model whether the account
-``looks right'' reopens the injection channel we set out to close; a confirmation prompt puts the whole decision back on a
-customer who, by construction, did not read the bill. The difficulty taught us that the customer's instruction ``pay this
-bill'' authorises the \emph{biller}, not whatever account number the document prints. The question had to change from
-\emph{where did the payee come from?} to \emph{is this the payee the claimed biller registered?}
-
-\textbf{How we overcame it.}
-\begin{itemize}
-\item \textbf{Split the class.} Named documents became class D, a confirmation card that names the source, instead of being
-trusted or blocked. With a careless customer this still left 25 of 120 red-team attacks (the original 12 families). What we gave up: a click for the
-customer on a first bill.
-\item \textbf{Bind the document to a registry, not to its own text.} If a document claims to come from a registered biller
-(Bharat BillPay, NPCI verified merchants), the payee must be that biller's registered handle; otherwise BLOCK. The registry
-is written by the payment system, so no injection can satisfy it. With a careless customer this cut 25 to 5, at no cost to
-legitimate payments (110/110 still complete).
-\item \textbf{Then we read the concurrent work and attacked ourselves with its failures.} v2 had no rule for any of them: it
-ignored the amount paid to a known payee, had no notion of changing a saved payee, and treated a file the agent itself
-wrote as a document the customer named (a laundering path we found only by replaying taintgate's evasion against our own
-design). v3 adds a rule for each (Section 7.2: A13--A15) and still completes 150/150 legitimate payments.
-\item \textbf{Our own white-box pass found two bugs before any number was reported.} A VPA that is a suffix of the
-customer's (\texttt{kumar@okicici} inside \texttt{rama.kumar@okicici}) matched under substring search, so we moved to
-whole-token matching. A spaced IBAN was missed because the pattern swallowed the end of the preceding word; that failed
-closed (a legitimate payment blocked, not a fraud allowed) and was fixed.
-\item \textbf{Still open:} payees with no registry (landlords, individuals named in a document) still rely on the customer's
-confirmation.
-\end{itemize}
-
-\section{Limitations}
-\begin{itemize}
-\item \textbf{Coached customers: partly closed, one case open.} Provenance cannot see a customer who really typed the
-scammer's account. A separate check for human payments uses signals a banking app already has (call with an unknown number,
-screen sharing or remote access, more than half the balance in 24 h, new payee) and holds the payment 24 h with a bank
-call-back. On 120 synthetic scenarios we wrote from reported Indian fraud patterns (design results, not independent): 50/60
-coached frauds held or stepped up (digital arrest, impersonation, remote-access refund, balance drain: 10/10 each; pasted
-investment VPA: 8 held, 2 stepped up). \textbf{Open:} a victim coached earlier, with no live signal, paying a small amount
-under the cap is paid 10/10. Cost: 50/60 legitimate payments go through at once; the 10 held are a large first payment to
-a car dealer who is on the phone, which looks exactly like coaching.
-\item \textbf{Confirmations: designed from evidence, not yet measured on our users.} The card follows the best arm of a
-randomised in-app experiment (Akesson, Gathergood \& Quispe-Torreblanca 2023: risk-based warning plus call to action, 81\%
-fewer people fell for fraud; generic warnings 18\%, decaying). Our own human study is pre-registered (PR54), not run.
-\item \textbf{Amounts.} Closed for registered billers (bill fetch must match) and saved payees (above last-paid needs
-confirmation); a wrong product from a legitimate merchant inside the mandate is not addressed.
-\item \textbf{Sample size and single attack type: closed.} PR52 covers all 28 AgentDojo configurations and 15 attack types
-(210 legitimate payee calls).
-\item \textbf{One live model: closed.} Three model families (Google gemma4; OpenAI gpt-oss-120b and gpt-4.1-mini) in the
-closed loop and two on the real payout server, 0 gated attacks for every one (PR55). Still open: gpt-oss-120b on the real
-server (provider daily limit) and any model larger than these.
-\item \textbf{Host trust: closed in code.} With a bank-app signature on each customer message, text the agent platform
-claims the customer typed cannot yield class P (2 tests, one planted defect caught).
-\item \textbf{Registry data is held by the deployer.} Our tests use invented handles because NPCI restricts the real data
-to members: acquiring banks publish verified merchants to NPCI and every UPI app must download and store that list
-(NPCI Circular 18/2017, List VAE API; OC-95, 2020), and Bharat Connect biller IDs reach banks through their biller-data
-feeds. The bank or payment app that would run this gate already holds both; the gate's registry is a plain
-entity-to-handle table they fill from that copy, with no code change.
-\end{itemize}
-
-\section{What each institution gets, and the rule it already has that this fits}
-The hackathon is where this starts, not where it ends. Each row below names an instrument that already exists, so adoption
-needs no new regulation, only a field, a check or a test.
-
-{\small
-\begin{longtable}{p{2.4cm}p{\dimexpr\linewidth-7cm-6\tabcolsep\relax}p{4.6cm}}
-\toprule
-institution & existing instrument (verified source) & what we hand over\\
-\midrule
-\textbf{NPCI} & Operating Circular 201-B (8 Oct 2025): software and IoT devices may make delegated UPI Circle payments,
-person-to-merchant only, device ID validated on every request, and an online dispute-resolution mechanism required
-(Khaitan \& Co. analysis). The Unified Agent Protocol is pending, with no published liability model. &
-A two-field addition to the agent payment request (payee provenance class and source); since delegated payments are P2M,
-every legitimate payee is a verified merchant, which the registry binding checks; signed receipts as the dispute record
-the circular requires; a precise replacement for the blanket end of P2P collect (a stranger's request is W).\\
-\textbf{RBI} & Authentication Directions 2025 (in force 1 Apr 2026): issuers may add risk-based checks beyond 2FA based on
-the fraud risk of the transaction. Third Amendment Directions 2026 (from 1 Jan 2027): banks bear the burden of proof on
-fraudulent electronic banking transactions. FREE-AI (Aug 2025): an AI innovation sandbox is recommended. &
-Payee provenance as the risk signal for the risk-based check (STEP\_UP is that check); the receipt and dispute report as
-the evidence a bank needs to meet the burden of proof; a sandbox-ready test plan.\\
-\textbf{RBI Innovation Hub} & MuleHunter.AI (26 banks); the Digital Payments Intelligence Platform prototype (real-time
-risk scores). & Provenance class as a feature for transaction risk scores; W-class payees as a cross-check against mule
-lists.\\
-\textbf{Banks, PSPs, TPAPs} & Beneficiary name look-up (RTGS/NEFT, from 1 Apr 2025); beneficiary cooling-off practice. &
-A drop-in check in front of any agent payment API (424 lines, no model, no extra network call) that also gates payee
-changes, and a dispute report from verified receipts.\\
-\textbf{SROs (FACE, UFF)} & RBI-recognised fintech SROs (FACE 2024; Unified Fintech Forum, Sept 2026) with codes of conduct
-and dispute resolution. & The scenario catalogue as a conformance test for members' agent payment products.\\
-\textbf{IndiaAI Safety Institute} & India-first evaluation and benchmarks. & The 15-family Indian fraud catalogue, the
-AgentDojo scorer and the closed-loop harness, all open source.\\
-\bottomrule
-\end{longtable}}
-
-\textbf{How we keep the evidence ahead.} We attack our own controls first and publish what breaks: every failure in this
-report (a suffix VPA, a spaced IBAN, a laundering path, the invoice ambiguity) was found by us, before release.
-Predictions are written and hashed before any scoring.
-
-\textbf{What funding builds next:} larger frontier models in the closed loop; a human study of confirmation cards in
-Hindi, English and regional languages; the coached-payment check on a bank's real call and device signals;
-integration with Bharat Connect bill fetch and NPCI verified-merchant data; a draft field specification for the Unified
-Agent Protocol; a pilot with one PSP.
-
-\section{How a bank deploys it}
 \textbf{Where it runs.} At the bank, PSP or payment app endpoint that receives an agent's payment request, before the UPI
 request is formed. It does not depend on which agent the customer uses, so a bank can enforce it on every agent at once.
 
@@ -831,26 +606,107 @@ Measures to report each month: false-block rate, confirmation rate, holds cancel
 payments, and time to resolve a dispute using the signed receipt (the evidence the bank needs under RBI's 2027 burden of
 proof).
 
-\section{Deliverables and declarations}
+\subsection*{Where it fits existing rules}
+
+The hackathon is where this starts, not where it ends. Each row below names an instrument that already exists, so adoption
+needs no new regulation, only a field, a check or a test.
+
 {\small
-\begin{longtable}{@{}p{3.1cm}p{\dimexpr\linewidth-3.1cm-2\tabcolsep\relax}@{}}
+\begin{longtable}{p{2.4cm}p{\dimexpr\linewidth-7cm-6\tabcolsep\relax}p{4.6cm}}
 \toprule
-Code repository & \repo{}. The README reproduces every number; standard-library Python 3.10+, no model, no network.\\
-Built during the hackathon? & Built on earlier work by the same author, cited above. \emph{Existed before:} the
-authorization-provenance witness and deed-provenance monitor (September 2026) and our AgentDojo scoring harness.
-\emph{Added on 31 October 2026, inside the window:} the payee-provenance gate for payment rails (inherited beneficiary provenance, registry binding, amount provenance, payee-change gating, signed customer channel, confirmation card), signed receipts and dispute report, the Indian red team, six pre-registered evaluations (AgentDojo banking for four models, then all of AgentDojo's banking runs, a closed loop with a real LLM, the real payout server and its follow-up, and the same closed loop and server with two more model families) and a pre-registered, not yet run, human-study protocol, the tests and mutation probe, the video and this report.\\
-AI tools used & Claude Opus 5.5 (Anthropic), through Claude Code: web research, writing the code, running the evaluations,
-and drafting this report under the author's direction. The author chose the problem, approved each step and is responsible
-for every claim. Agents under test (never part of the gate): gemma4 (Google; open weights, local through Ollama),
-gpt-oss-120b (OpenAI open weights, through Groq's API) and gpt-4.1-mini (OpenAI, through OpenAI's API). No AI model is part of the gate.\\
-External code and data & AgentDojo task definitions and run logs (MIT licence, ETH Z\"urich SPY Lab), read-only. gemma4
-open weights (local); gpt-oss-120b and gpt-4.1-mini by API on synthetic scenarios (evaluation only). Python standard library. Our code and scenarios: MIT.\\
-No real personal data & Yes. Every VPA, account, IBAN and name is synthetic; AgentDojo's are its own synthetic values.\\
-Responsible disclosure & Yes. No live UPI, bank, NPCI or Aadhaar system was touched; no exploit against a real system is
-described; the attack families are standard, publicly documented fraud patterns.\\
-Environment & A local Python mock of a UPI-style rail with Reserve Pay-style mandates and a stand-in biller registry; AgentDojo's published logs; an Indian payment gateway's open-source payout server built from source and run locally against a capture proxy with dummy credentials (no vendor system contacted); gemma4 run locally, two models by API. No real transactions or accounts were involved.\\
+institution & existing instrument (verified source) & what we hand over\\
+\midrule
+\textbf{NPCI} & Operating Circular 201-B (8 Oct 2025): software and IoT devices may make delegated UPI Circle payments,
+person-to-merchant only, device ID validated on every request, and an online dispute-resolution mechanism required
+(Khaitan \& Co. analysis). The Unified Agent Protocol is pending, with no published liability model. &
+A two-field addition to the agent payment request (payee provenance class and source); since delegated payments are P2M,
+every legitimate payee is a verified merchant, which the registry binding checks; signed receipts as the dispute record
+the circular requires; a precise replacement for the blanket end of P2P collect (a stranger's request is W).\\
+\textbf{RBI} & Authentication Directions 2025 (in force 1 Apr 2026): issuers may add risk-based checks beyond 2FA based on
+the fraud risk of the transaction. Third Amendment Directions 2026 (from 1 Jan 2027): banks bear the burden of proof on
+fraudulent electronic banking transactions. FREE-AI (Aug 2025): an AI innovation sandbox is recommended. &
+Payee provenance as the risk signal for the risk-based check (STEP\_UP is that check); the receipt and dispute report as
+the evidence a bank needs to meet the burden of proof; a sandbox-ready test plan.\\
+\textbf{RBI Innovation Hub} & MuleHunter.AI (26 banks); the Digital Payments Intelligence Platform prototype (real-time
+risk scores). & Provenance class as a feature for transaction risk scores; W-class payees as a cross-check against mule
+lists.\\
+\textbf{Banks, PSPs, TPAPs} & Beneficiary name look-up (RTGS/NEFT, from 1 Apr 2025); beneficiary cooling-off practice. &
+A drop-in check in front of any agent payment API (424 lines, no model, no extra network call) that also gates payee
+changes, and a dispute report from verified receipts.\\
+\textbf{SROs (FACE, UFF)} & RBI-recognised fintech SROs (FACE 2024; Unified Fintech Forum, Sept 2026) with codes of conduct
+and dispute resolution. & The scenario catalogue as a conformance test for members' agent payment products.\\
+\textbf{IndiaAI Safety Institute} & India-first evaluation and benchmarks. & The 15-family Indian fraud catalogue, the
+AgentDojo scorer and the closed-loop harness, all open source.\\
 \bottomrule
 \end{longtable}}
+
+
+
+\section{Related and concurrent work}
+
+\begin{itemize}
+\item \textbf{CaMeL} (Debenedetti et al., 2025) and \textbf{FIDES} (Microsoft, 2025) track where values come from inside a
+redesigned agent: CaMeL builds a protective layer that separates control flow taken from the user's query from untrusted
+data and enforces capability policies at tool calls (about 77\% AgentDojo utility vs 84\% undefended). \emph{The principle
+that untrusted data must not choose consequential arguments is theirs.} We apply it at the \emph{bank's} side of the payment
+API, with no change to the agent, which matters because a bank does not control which agent its customer uses.
+\item \textbf{PACT} (Fan et al., arXiv:2605.11039, May 2026) enforces provenance per \emph{argument} rather than per tool
+call, computed by a runtime monitor: with oracle provenance it reports 100\% security and utility on diagnostic suites, and
+on AgentDojo 100\% security on the three strongest models at 38--46\% utility; its authors locate the remaining bottleneck in
+\emph{inferring} provenance. \textbf{ARGUS} (Weng et al., arXiv:2605.03378) releases an action only when benign evidence
+entails it (attack success 28.8\% to 3.8\% at 87.5\% utility on its AgentLure benchmark, whose example is a fee injected into
+a bill payment). For payments the inference problem largely disappears: a VPA, IBAN or account number is an exact token, so
+we match it against the customer's text and the bank's records instead of inferring its origin. That is why the gate needs
+no model and blocked 0/24 legitimate AgentDojo payments; the figures are not directly comparable (recorded traces vs
+closed-loop utility).
+\item \textbf{A-VIP} (Louck et al., arXiv:2609.11757, September 2026) binds each cart line to the listing the user saw, for
+Google's AP2 protocol; \textbf{Beyond the Mandate} (Aviv et al., arXiv:2608.23858) shows that valid AP2 mandate signatures
+do not ensure an agent transaction reflects the user's intent. Neither addresses UPI's mandate model.
+\item \textbf{aiAuthZ} (arXiv:2607.05518) gates AgentDojo banking calls with an allowlist; clean utility fell from 100\%
+to 80\% because a legitimate first payment to a new payee was blocked: the allowlist trade-off our K/P split removes.
+\item \textbf{Authenticated Delegation} (South et al., arXiv:2501.09674) and \textbf{Auditable Agents} (Nian et al.,
+arXiv:2604.05485) set out delegation credentials and five auditability dimensions; our receipt covers action recoverability,
+policy checkability, responsibility attribution and evidence integrity for the payment step.
+\end{itemize}
+\begin{itemize}
+\item \textbf{Mastercard Verifiable Intent} (with Google, open-sourced) and \textbf{Visa's Trusted Agent Protocol} bind the
+cardholder, a registered agent and the mandate's scope into signed credentials. They prove \emph{which} agent acted under
+\emph{which} mandate; they do not decide whether a payee inside that mandate came from the cardholder. The gate is the check
+such a credential needs at payment time, and its receipt can carry their identifiers.
+\end{itemize}
+
+\paragraph{Concurrent work, October 2026.}
+Three independent projects reached the same principle this month. We found them in our final research pass, after our
+gate and its AgentDojo pre-registration existed, and we report them in full because they are close.
+{\small
+\begin{longtable}{p{2.6cm}p{3.6cm}p{4.2cm}p{5.6cm}}
+\toprule
+work & where the check runs & evidence & gaps it reports or leaves\\
+\midrule
+\textbf{Mool} (Hack Sprint 2026, 5 Oct; UPI) & inside a redesigned agent: privileged planner + quarantined extractor
+(CaMeL pattern) & own benchmark, 50 tasks $\times$ 6 attacks, \emph{deterministic stand-in model}: 0/300 stolen, 46/50 clean
+tasks completed & amount inflation to the right payee overpaid 31/50 runs; every new payee is held; no real-LLM result in
+the public repository (last commit 5 Oct)\\
+\textbf{taintgate} (HackerNoon, 11 Oct) & in-process provenance gate & 5 scenarios: 3/5 attacks stopped, \textbf{0/2
+legitimate actions allowed}; a 629-attack AgentDojo study of ten injection detectors (best: 51\% at 2\% FPR) &
+reformatting an account number broke matching; laundering through several tools broke lineage; cannot separate a real bill
+IBAN from an injected one\\
+\textbf{fps-ai-security-poc} (19 Oct; ISO 20022) & layered: screen, policy on beneficiary records, Confirmation of Payee,
+human hold & simulated agent; Claude Haiku 5.5 paid 0/240 on its own & names vendor-master fraud (saved payee's details
+changed) but does not gate the change itself\\
+\bottomrule
+\end{longtable}}
+\textbf{The principle is shared; our contribution is the evidence and the gaps closed.} (i) We are the only one of the four
+with a \textbf{pre-registered result on real agents' traces} (four frontier models, AgentDojo), measured against the controls
+UPI actually uses (caps, allowlists), and \textbf{closed-loop runs with three real LLMs} (Section~\ref{sec:closed}). (ii) Our gate runs at the
+\textbf{bank or PSP}, not inside the agent: a bank does not control which agent its customer uses, so a check that requires
+a particular agent architecture cannot be the bank's control. (iii) We built and measured a fix for every gap the table
+lists: amount provenance (registered bill fetch must match; a known payee above its last-paid amount needs confirmation),
+vendor-master changes gated like payments plus a cooling-off window, digit-separator canonicalisation, root matching (no
+lineage to break), files the agent wrote treated as world text, and a biller-registry binding that separates the real bill
+payee from the injected one. (iv) A receipt and dispute classifier shaped for RBI's 2027 burden of proof.
+
+
 
 \section*{Sources}
 {\scriptsize
@@ -879,4 +735,5 @@ Environment & A local Python mock of a UPI-style rail with Reserve Pay-style man
 \item Y. Nian et al., Auditable Agents, arXiv:2604.05485.
 \end{itemize}
 \end{multicols}}
+
 \end{document}
