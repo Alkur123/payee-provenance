@@ -8,7 +8,7 @@ never sees. For an AI agent's payment it can, exactly, because everything the ag
 payments are arriving on UPI now (Razorpay × NPCI on Claude, Feb 2026; NPCI's Unified Agent Protocol in development).
 They are protected by spending caps, which bound **how much**. Nothing binds **who said so**.
 
-**Report:** [AegisAI_Report.pdf](AegisAI_Report.pdf) (10 pages, SAFL template) · **Supplementary:** [AegisAI_Supplementary.pdf](AegisAI_Supplementary.pdf) (background, design detail, full threat model) · **Video:** [media/demo.mp4](media/demo.mp4) (1:51)
+**Report:** [AegisAI_Report.pdf](AegisAI_Report.pdf) (SAFL template sections 1-10, then appendices) · **Video:** [media/demo.mp4](media/demo.mp4) (1:51)
 
 | class | the payee identifier... | decision |
 |---|---|---|
@@ -114,10 +114,29 @@ delivered in 12 of 15 episodes in both conditions (the 3 misses are one batch sc
 either way).
 
 ### 5. Tests that can fail
-32 tests, including a 5,000-case fuzz of the fail-closed claim (only the customer's exact token can ever be allowed,
+50 tests, including a 5,000-case fuzz of the fail-closed claim (only the customer's exact token can ever be allowed,
 under eight attacker transformations), laundering, registry mismatch, the concurrent-work gaps, the signed customer
-channel, the confirmation card, receipt tampering and the dispute report. `tests/mutation_probe.py` plants fifteen
-defects in a copy of the code; **all fifteen are caught**.
+channel, the confirmation card, receipt tampering and truncation, the dispute report, and the trust boundary.
+`tests/mutation_probe.py` plants 22 defects in a copy of the code; **all 22 are caught**.
+
+### 6. External code review and version 3.1
+An external reviewer audited this repository on 31 October 2026. For each reported issue we first wrote a test that
+fails if the issue is real (`tests/test_review_findings.py`), then fixed the code:
+
+| finding | verdict | fix |
+|---|---|---|
+| a customer ceiling ("up to Rs 2,000") switched off the bill-fetch check | real bug | every applicable amount rule now applies; each can only tighten |
+| a biller name matched inside another word ("Jio" in "Majiority") | real bug (failed closed) | whole-word matching |
+| the receipt chain could be rolled back to an older valid prefix | design gap | `head()` anchor + `verify(anchor=...)`, append-only file |
+| the decision API accepted any session object | design gap | `bank_api.py`: the bank seals session state; unsealed or altered state is refused |
+| nothing guaranteed every money-moving route passes the gate | design gap | `bank_api.py`: the backend executes only with a single-use token bound to operation, payee and amount |
+| tool results could pair with the wrong call in the model adapter | not a bug | two tests added |
+
+Through the full integration path (`python evaluate_mediation.py`): 0/190 attacker actions executed, 160/160 scenarios with
+a legitimate action completed, and 190/190 direct backend calls, 180/180 token replays and 180/180 redirected tokens
+refused. **Effect on published results: none.** The red-team output is identical; every gated call recorded in the three
+closed loops (231) gets the same verdict from v3.1 (`python replay_closed_loop.py closed_loop*.jsonl`); AgentDojo was
+scored by the frozen pre-registered copy of the gate.
 
 ## Concurrent work (October 2026)
 Three projects reached the same principle this month; we found them in our final research pass and compare honestly.
@@ -138,8 +157,8 @@ measured; a receipt and dispute report shaped for RBI's 2027 burden of proof.
 * **Inputs the bank already holds:** the customer's signed messages, beneficiary records and who created them, the
   verified-merchant list every UPI app stores, Bharat Connect biller data and bill fetch; for human payments, in-call and
   screen-sharing signals from the app.
-* **Cost:** 424 lines of standard-library Python (gate + receipts), no model, no network call; median 74 µs per decision,
-  99th percentile 0.24 ms on one laptop core.
+* **Cost:** under 600 lines of standard-library Python (gate, receipts and the reference bank integration), no model, no
+  network call; median 71 µs per decision, 99th percentile 0.25 ms on one laptop core.
 * **Fails closed:** a payee nobody on the customer's side wrote is refused. Across all AgentDojo banking runs, the 11
   legitimate-task payments refused (of 210) were all to wrong accounts the agent itself produced.
 * **Rollout:** shadow mode (log, block nothing; measure false blocks on real traffic) → enforce BLOCK for unsourced payees
@@ -150,8 +169,10 @@ measured; a receipt and dispute report shaped for RBI's 2027 burden of proof.
 Python 3.10+, standard library only, no network, no model.
 ```
 python evaluate.py                       # the red-team table (v3); --no-registry disables the biller registry
-python -m unittest discover -s tests -v  # 32 tests
-python tests/mutation_probe.py           # 15/15 planted defects caught
+python -m unittest discover -s tests -v  # 50 tests
+python tests/mutation_probe.py           # 22/22 planted defects caught
+python evaluate_mediation.py             # red team through sealed state -> gate -> token -> backend, plus bypass attempts
+python replay_closed_loop.py closed_loop.jsonl closed_loop_gptoss.jsonl closed_loop_gpt41mini.jsonl   # v3.1 verdict replay
 python evaluate_human.py                 # coached human payments (hold / step-up / allow)
 python closed_loop.py                    # closed loop; needs a local Ollama with gemma4 (about an hour)
 python closed_loop.py --model openai:gpt-4.1-mini-2025-04-14 --out closed_loop_gpt41mini.jsonl   # needs OPENAI_API_KEY
@@ -176,8 +197,10 @@ python agentdojo/score_banking_all.py <agentdojo-checkout-at-089ed468>   # every
   (`preregistrations/PREREGISTRATION_54_*`), not run.
 * **A wrong product from a legitimate merchant inside the mandate** is not addressed (amounts to registered billers and
   saved payees are).
-* **Host trust** is closed only if the bank's app signs each customer message (`sign_principal`, `verified_session`);
-  without that, the gate must trust the host's record of which text the customer typed.
+* **Host trust** rests on the bank: it signs each customer message (`sign_principal`) and seals the session state it
+  builds from its own records (`bank_api.seal_session`). The reference integration enforces both; a real deployment
+  must keep those keys away from the agent platform. Receipts are tamper-evident; the bank must anchor the chain head
+  outside the receipt store.
 * **Models:** three families in the closed loop and two on the real payout server; gpt-oss-120b did not run on the real
   server (provider daily limit) and no model larger than these was tested live.
 * **Synthetic data.** No real Aadhaar, VPA, account or person was used; no live UPI, bank or NPCI system was touched.

@@ -19,8 +19,15 @@ MUTANTS = {
     "world payee gets step-up not block": ("gate.py", '"D": STEP_UP, "W": BLOCK}[cls]', '"D": STEP_UP, "W": STEP_UP}[cls]'),
     "agent-written file treated as delegation": ("gate.py", "            if d.written_by_agent:\n                return \"W\"",
                                                  "            if False:\n                return \"W\""),
-    "bill fetch ignored": ("gate.py", "if abs(amount - fetched) > 1e-9:", "if False:"),
-    "last-paid amount ignored": ("gate.py", "if amount > b.last_amount + 1e-9:", "if False:"),
+    "bill fetch ignored": ("gate.py", "if fetched is not None and abs(amount - fetched) > 1e-9:", "if False:"),
+    "last-paid amount ignored": ("gate.py", "and amount > b.last_amount + 1e-9):", "and False):"),
+    # re-plant each bug the 31 Oct external review found (v3.1 fixes)
+    "customer ceiling switches off bill fetch": ("gate.py", "if fetched is not None and abs(amount - fetched) > 1e-9:",
+                                                 "if not stated and fetched is not None and abs(amount - fetched) > 1e-9:"),
+    "registry claim by substring": ("gate.py", 'if re.search(r"(?<![0-9a-z])" + re.escape(ent.lower()) + r"(?![0-9a-z])", d.text.lower())]',
+                                    "if ent.lower() in d.text.lower()]"),
+    "receipt anchor ignored": ("receipt.py", 'if seq >= 0 and (seq >= len(self.entries) or self.entries[seq]["mac"] != anchor.get("mac")):',
+                               "if False:"),
     "beneficiary change not gated": ("gate.py", 'verdict = ALLOW if cls == "P" else STEP_UP if cls == "D" else BLOCK\n    return Decision(verdict, cls, src, [f"beneficiary change',
                                      'verdict = ALLOW\n    return Decision(verdict, cls, src, [f"beneficiary change'),
     "cooling-off ignored": ("gate.py", "if cls == \"K\" and b is not None and b.recently_changed:", "if False:"),
@@ -29,6 +36,14 @@ MUTANTS = {
     "confirmed step-up pays at once": ("gate.py", "        return HOLD, 4.0 if payee_is_new else 1.0", "        return ALLOW, 0.0"),
     "coaching signal ignored": ("gate.py", "    if coached and (not known or drain):", "    if False:"),
     "no digit-separator canonicalisation": ("gate.py", '    if re.fullmatch(r"\\+?[0-9][0-9.\\-]*[0-9]", c):', "    if False:"),
+    # trust boundary and complete mediation (bank_api.py, v3.1)
+    "session seal not checked": ("bank_api.py", '    if not hmac.compare_digest(hmac.new(bank_key, blob, hashlib.sha256).hexdigest(), str(seal)):',
+                                 "    if False:"),
+    "backend runs without a token": ("bank_api.py", '        if not token or "nonce" not in token or "tag" not in token:\n            raise Refused',
+                                     '        if False:\n            raise Refused'),
+    "token not bound to payee and amount": ("bank_api.py", '        if not hmac.compare_digest(hmac.new(self._key, body, hashlib.sha256).hexdigest(), str(token["tag"])):',
+                                            "        if False:"),
+    "token replay allowed": ("bank_api.py", '        if token["nonce"] in self._spent:', "        if False:"),
 }
 
 

@@ -1,12 +1,15 @@
 """Signed provenance receipts.
 
 A dispute over an agent payment needs to answer: which agent acted, under which mandate version, against what customer
-instruction, and who supplied the payee. RBI's directions of 24 June 2026 (effective 1 January 2027) add an
-"authorised-but-fraudulent" category and place the burden of proof on the bank. This receipt is that proof, written at
-payment time rather than reconstructed afterwards.
+instruction, and who supplied the payee. RBI's Third Amendment Directions, 2026 (for transactions from 1 January 2027)
+define a Fraudulent Electronic Banking Transaction and place the burden of proof on the bank. This receipt is evidence
+for that, written at payment time rather than reconstructed afterwards.
 
-Each receipt carries the hash of the previous one and an HMAC under a key the agent never holds, so a party that can
-write the receipt store still cannot rewrite history without detection (the same design as Aegis' audit vault).
+Each receipt carries the hash of the previous one and an HMAC under a key the agent never holds, so edits, deletions
+and reordering are detected. The chain is tamper-evident, not by itself an immutable audit system: removing the newest
+entries leaves a valid prefix, so the bank must store the latest head (head()) somewhere the receipt-store writer cannot
+reach (for example a write-once object store) and pass it to verify(anchor=...). Key rotation and durable replicated
+storage belong to the bank's existing audit infrastructure.
 """
 from __future__ import annotations
 
@@ -43,7 +46,13 @@ class ReceiptChain:
         self.entries.append(rec)
         return rec
 
-    def verify(self) -> bool:
+    def head(self) -> dict:
+        """The value to anchor outside the receipt store after each append (or each batch)."""
+        return {"seq": len(self.entries) - 1, "mac": self.entries[-1]["mac"] if self.entries else "0" * 64}
+
+    def verify(self, anchor: Optional[dict] = None) -> bool:
+        """Every link and MAC checks out; with an anchor, the chain must also still contain the anchored head, so a
+        store rolled back to an older valid prefix fails."""
         prev = "0" * 64
         for i, rec in enumerate(self.entries):
             body = {k: v for k, v in rec.items() if k != "mac"}
@@ -52,7 +61,29 @@ class ReceiptChain:
             if not hmac.compare_digest(self._mac(body), rec["mac"]):
                 return False
             prev = rec["mac"]
+        if anchor is not None:
+            seq = anchor.get("seq", -1)
+            if seq >= 0 and (seq >= len(self.entries) or self.entries[seq]["mac"] != anchor.get("mac")):
+                return False
         return True
+
+    def save(self, path: str) -> None:
+        """Append-only JSON Lines: entries already in the file are never rewritten."""
+        import os
+        have = 0
+        if os.path.exists(path):
+            with open(path, encoding="utf-8") as f:
+                have = sum(1 for line in f if line.strip())
+        with open(path, "a", encoding="utf-8") as f:
+            for rec in self.entries[have:]:
+                f.write(json.dumps(rec, sort_keys=True) + "\n")
+
+    @classmethod
+    def load(cls, path: str, key: bytes) -> "ReceiptChain":
+        c = cls(key)
+        with open(path, encoding="utf-8") as f:
+            c.entries = [json.loads(line) for line in f if line.strip()]
+        return c
 
     def dispute_category(self, seq: int) -> str:
         """Where a disputed payment stands, read off the receipt alone. This is OUR mapping for a dispute desk, not an

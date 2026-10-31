@@ -180,8 +180,9 @@ def registry_check(payee: str, s: Session) -> Optional[Tuple[str, str]]:
     for name, d in s.docs():
         if d.written_by_agent or p not in identifiers(d.text):
             continue
-        low = d.text.lower()
-        claimed = [ent for ent in s.biller_registry if ent.lower() in low]
+        # whole-word match (v3.1, after external review): "Jio" inside "Majiority" is not a claim to be Jio
+        claimed = [ent for ent in s.biller_registry
+                   if re.search(r"(?<![0-9a-z])" + re.escape(ent.lower()) + r"(?![0-9a-z])", d.text.lower())]
         if not claimed:
             return None
         if any(canon(s.biller_registry[e]) == p for e in claimed):
@@ -211,21 +212,27 @@ def decide_payment(payee: str, amount: float, s: Session) -> Decision:
         reasons.append("beneficiary changed inside the cooling-off window")
     if verdict == BLOCK:
         return Decision(verdict, cls, src, reasons)
-    # amount provenance: can only make the decision stricter
+    # amount provenance: every applicable constraint is checked, and each can only make the decision stricter
+    # (v3.1, after external review: a customer ceiling no longer switches off the bill-fetch or mandate checks)
     fetched = s.bill_fetch.get(canon(payee))
-    if s.principal_amounts:
-        if amount > max(s.principal_amounts) + 1e-9:
-            verdict = BLOCK
-            reasons.append(f"amount {amount} exceeds the amount the customer stated")
-    elif fetched is not None:
-        if abs(amount - fetched) > 1e-9:
+    stated = s.principal_amounts
+    stated_exactly = any(abs(amount - a) <= 1e-9 for a in stated)
+    if stated and amount > max(stated) + 1e-9:
+        verdict = BLOCK
+        reasons.append(f"amount {amount} exceeds the amount the customer stated")
+    if fetched is not None and abs(amount - fetched) > 1e-9:
+        if stated_exactly:
+            verdict = _stricter(verdict, STEP_UP)
+            reasons.append(f"amount {amount} differs from the registered bill fetch {fetched}; the customer stated it")
+        else:
             verdict = BLOCK
             reasons.append(f"amount {amount} differs from the registered bill fetch {fetched}")
-    elif cls == "K" and b is not None and b.last_amount is not None:
-        if amount > b.last_amount + 1e-9:
-            verdict = _stricter(verdict, STEP_UP)
-            reasons.append(f"amount {amount} above the last amount paid to this payee ({b.last_amount})")
-    elif amount > s.mandate_cap:
+    if (cls == "K" and b is not None and b.last_amount is not None and not stated_exactly and fetched is None
+            and amount > b.last_amount + 1e-9):
+        verdict = _stricter(verdict, STEP_UP)
+        reasons.append(f"amount {amount} above the last amount paid to this payee ({b.last_amount})")
+    if (amount > s.mandate_cap + 1e-9 and not stated_exactly
+            and not (fetched is not None and abs(amount - fetched) <= 1e-9)):
         verdict = _stricter(verdict, STEP_UP)
         reasons.append(f"amount {amount} above mandate cap {s.mandate_cap}")
     return Decision(verdict, cls, src, reasons)
