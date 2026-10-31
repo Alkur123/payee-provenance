@@ -8,6 +8,8 @@ never sees. For an AI agent's payment it can, exactly, because everything the ag
 payments are arriving on UPI now (Razorpay × NPCI on Claude, Feb 2026; NPCI's Unified Agent Protocol in development).
 They are protected by spending caps, which bound **how much**. Nothing binds **who said so**.
 
+**Report:** [AegisAI_Report.pdf](AegisAI_Report.pdf) (10 pages, SAFL template) · **Supplementary:** [AegisAI_Supplementary.pdf](AegisAI_Supplementary.pdf) (background, design detail, full threat model) · **Video:** [media/demo.mp4](media/demo.mp4) (1:51)
+
 | class | the payee identifier... | decision |
 |---|---|---|
 | **P** principal | occurs, as a whole token, in the customer's own message | ALLOW |
