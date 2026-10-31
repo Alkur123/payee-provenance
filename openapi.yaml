@@ -1,0 +1,75 @@
+openapi: 3.0.3
+info:
+  title: Payee-provenance gate
+  version: "3.1"
+  description: >
+    Decides whether an AI agent's payment, payee change, collect approval or password change may proceed, based on where
+    the payee came from. Runs inside the bank or PSP, in front of the payment API. Every decision is receipted.
+paths:
+  /v1/decide:
+    post:
+      summary: Decide one proposed operation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [op, state, seal, target]
+              properties:
+                op: {type: string, enum: [pay, approve_collect, add_payee, update_payee, set_password]}
+                state: {type: string, description: "base64 session state built by the bank from its own records"}
+                seal: {type: string, description: "HMAC-SHA256 of state under the bank's sealing key"}
+                target: {type: string, description: "payee VPA, account, IBAN or phone; for update_payee the saved payee being changed; for set_password the new value"}
+                amount: {type: number}
+                new_value: {type: string, description: "update_payee only: the new payee"}
+                agent_id: {type: string}
+                mandate_id: {type: string}
+                mandate_version: {type: integer}
+                instruction: {type: string, description: "the customer's instruction; only its SHA-256 is stored"}
+                lang: {type: string, enum: [en, hi]}
+      responses:
+        "200":
+          description: Decision
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  verdict: {type: string, enum: [ALLOW, STEP_UP, BLOCK]}
+                  payee_class: {type: string, enum: [P, K, R, D, W]}
+                  source: {type: string}
+                  reasons: {type: array, items: {type: string}}
+                  receipt: {type: object, properties: {seq: {type: integer}, mac: {type: string}}}
+                  token: {type: object, description: "ALLOW only: single-use execution token for the payment backend"}
+                  decision_id: {type: string, description: "STEP_UP only: answer with /v1/confirm"}
+                  card: {type: object, description: "STEP_UP only: confirmation card naming the payee's source"}
+        "403": {description: "session state not sealed by the bank"}
+  /v1/confirm:
+    post:
+      summary: Record the customer's answer to a confirmation (signed by the bank's app)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [decision_id, approved, customer_sig]
+              properties:
+                decision_id: {type: string}
+                approved: {type: boolean}
+                customer_sig: {type: string, description: "HMAC-SHA256 of '<decision_id>:<true|false>' under the bank app key"}
+      responses:
+        "200": {description: "HOLD with a token valid only after the hold (approved) or BLOCK (declined); both receipted"}
+        "403": {description: "answer not signed by the bank's app"}
+  /v1/receipts/head:
+    get:
+      summary: Latest receipt sequence number and MAC, to anchor outside the receipt store
+      responses: {"200": {description: "{seq, mac}"}}
+  /v1/receipts/verify:
+    post:
+      summary: Verify the whole chain, optionally against an anchored head
+      responses: {"200": {description: "{verified}"}}
+  /healthz:
+    get:
+      responses: {"200": {description: "service up"}}

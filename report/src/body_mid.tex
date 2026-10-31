@@ -1,0 +1,139 @@
+\section{Project overview}
+\textbf{Project title.} Who Said So? Payee provenance for AI-agent payments on UPI.
+
+\textbf{One-line summary.} A bank-side check that lets an AI agent pay only payees the customer or the bank supplied, and
+records the source of each payee.
+
+\textbf{Website description.} UPI is opening to AI agents that pay on a customer's behalf within spending limits. A limit
+controls how much an agent spends, not whom it pays, so one hidden line in a bill, text message or web page can redirect a
+payment that passes every check. We built a gate that checks where each payee came from: the customer, the bank's records,
+or outside text. It blocks or asks for confirmation, and keeps a signed record for disputes. On banking traces from four AI
+vendors, it stopped all 197 successful attacks without blocking a legitimate payment.
+
+\section{The problem}
+\textbf{DPI system addressed.} UPI, including bill payments through Bharat Connect. The check applies to any payment rail
+on which an agent chooses the payee.
+
+\textbf{Which DPI assumption breaks.} UPI was built on the assumption that the person who approves a payment also chose the
+person being paid. The PIN, the OTP and the payee-name display all verify the payer and the account. None of them asks where
+the account number came from, because in a human payment the answer is the payer. Agent payments change this. Under a UPI
+Circle delegation or a Reserve Pay mandate, the customer approves a limit once, and the agent then takes each payee from
+whatever it is reading at the time: a bill, a text message, a web page or a collect request. If an attacker wrote any of
+that text, the attacker chooses the payee, and the payment still passes every check on the rail.
+
+\textbf{Problem statement and who is affected.} Consider a customer who asks an agent to pay the electricity bill. The bill
+contains one extra line asking for a late fee to be sent to a different UPI ID. When we ran this case, the model paid the
+biller and then paid the second account, within the spending limit. Authorised push payment fraud is already hard to stop
+because the persuasion happens outside the bank's channels. Agents add a channel in which a single working injection can be
+reused against every customer of the same agent. UPI is opening to agents now: Razorpay and NPCI launched agent payments on
+Claude in February 2026, NPCI's Operating Circular 201-B allows delegated payments by software, and a Unified Agent Protocol
+is planned. From 1 January 2027, RBI's directions place the burden of proof for fraudulent electronic banking transactions on
+the bank, which currently keeps no record of who chose the payee.
+
+\section{Our approach and findings}
+\textbf{Approach.} The gate examines where the payee came from rather than what the agent's inputs say. For each payment the
+agent proposes, it traces the payee identifier to its source, using only records the bank already holds, and assigns one of
+five classes (Figure~\ref{fig:flow}): \textbf{P}, the customer's own signed message; \textbf{K}, a payee the customer saved
+earlier; \textbf{R}, the registered handle of a biller; \textbf{D}, a document the customer pointed the agent to; and
+\textbf{W}, anything else. Payments to P, K and R are allowed, D requires the customer's confirmation, and W is blocked.
+Later rules can only make a decision stricter. A bill that claims to come from a registered biller must carry that biller's
+handle. The amount must match what the customer stated or the biller's bill fetch, and paying a saved payee more than last
+time, or soon after its details changed, requires confirmation. Each decision is written to a hash-chained, HMAC-signed
+receipt. The gate uses no model and makes no network call; it is 424 lines of Python and takes a median of 74\,\textmu s
+per decision. We considered and rejected three alternatives. A second language model
+judging each payment can be injected through the same text. A known-payee allowlist blocks every first payment to a new
+payee (41.7\% of legitimate AgentDojo payments) and is bypassed by adding the payee first. A tighter spending limit still
+admits small redirected payments; 80.7\% of real attacks would fit under one.
+
+%%FIG_FLOW%%
+
+\textbf{Threat model and resilience under exposure.} We assume the agent is fully compromised. The attacker controls the
+bills, text messages, e-mails, web pages and collect requests the agent reads, as well as any file the agent writes, and
+has read our rules and source code. Their goal is to move money to an account they control or to change the account's
+credentials. They cannot write the customer's signed messages, the bank's beneficiary records or the biller registry, and
+they do not hold the key that signs receipts. Knowing the rules does not help the attacker, because the gate allows a payee
+only if it appears in a message the customer wrote or in a record that only authorised actions can create. There is no
+classifier to evade and no score threshold to stay below. Obfuscation works against the attacker: a homoglyph, a
+zero-width character or a look-alike VPA simply fails to match the customer's identifier, so the payee is classed W and
+blocked. A 5,000-case fuzz test checks this fail-closed property, and a mutation probe confirms that each of fifteen
+deliberately planted defects is caught. The only secret is the receipt key. The remaining weakness is a customer who has
+been persuaded to type the scammer's account themselves.
+
+\textbf{How we evaluated it.} We used five sources of evidence. The first is every banking run published in AgentDojo, a
+standard prompt-injection benchmark: 28 model and defence configurations, 15 attack types and 7,802 runs. The second is a
+closed loop in which three language models (gemma4, gpt-oss-120b and gpt-4.1-mini) act as the payment agent on 90
+scenarios, each run with and without the gate. The third places the gate in front of an Indian payment gateway's
+open-source payout server, built unmodified and run locally against a capture proxy, with two of those models. These three
+were pre-registered: predictions were written and hashed before any result was scored, and the one prediction that failed
+is reported. The fourth is a red team of 150 attacks across 15 Indian fraud patterns, written by us. The fifth is a set of
+unit, property and mutation tests. We measured attacks that moved money, legitimate payments blocked and time per decision,
+against three baselines: no defence, a UPI-style spending limit and a known-payee allowlist. All data was synthetic.
+
+\textbf{Key results} (Figure~\ref{fig:results}; details in Appendix~\ref{app:evidence}).
+\begin{itemize}
+\item \textbf{AgentDojo.} Of 1,549 successful attacks, 1,477 contained an attacker payment or credential call, and the
+gate stopped every one of those calls, including in 299 attacks that had already got past an existing defence. The other
+72 made no such call or paid an account the user had named; as pre-registered, they are reported separately, and counting
+all of them as misses still gives at least 95.4\%. A spending limit let 83.6\% through. One prediction failed: 11 of 210 legitimate
+payments were blocked, and in each case the agent was paying a wrong account it had produced itself.
+\item \textbf{Real models as the agent.} Without the gate, 46 attacks moved money across the three models (12 of 45, 14 of
+44 and 20 of 45). With the gate, none did, and no legitimate task was lost.
+\item \textbf{Real payout server.} Attacker payouts reached the payment API in 14 of 15 and 10 of 15 attack episodes
+without the gate, and in none with it. The server's own provenance labels, which the agent fills in, described the
+attacker's account as ``user input'' 12 times out of 20.
+\item \textbf{Cost.} A median of 74\,\textmu s per decision, with no model and no network call.
+\end{itemize}
+
+%%FIG_RESULTS%%
+
+\textbf{What's new here.} Most prompt-injection defences either try to detect malicious text, which an attacker who knows the
+detector can avoid, or require a redesigned agent, which a bank cannot impose on its customers. We check the payee at the
+bank against records that only the customer and the bank can write. Payment identifiers are exact strings, so their source
+can be computed directly and the check needs no model.
+
+\textbf{Who could use this, and how.} A bank, PSP or payment app offering agent payments can place the gate in front of its
+payment API, run it first in shadow mode to measure false blocks on its own traffic, and then enforce it
+(Appendix~\ref{app:bank}). NPCI could carry the payee's provenance class and source as two fields in the Unified Agent
+Protocol, and the signed receipt gives banks the evidence they will need under RBI's 2027 rules.
+
+\textbf{Limitations and open problems.} Our evidence comes from recorded benchmark runs, our own red team and synthetic
+scenarios rather than live customer traffic, so a shadow-mode trial at a bank is the most important next test. The
+confirmation screen follows the design that performed best in a randomised field study (Akesson et al.\ 2023, in which 81\%
+fewer people fell for fraud), but our own user study is pre-registered and not yet run. Provenance does not cover a customer
+persuaded to type the scammer's account. An added check holds such payments when the app detects a call from an unknown
+number or screen sharing (50 of 60 synthetic cases held), but a victim coached earlier who pays a small amount with no live
+signal is still paid. Payees with no registry entry depend on confirmation, and because real registry data is available only
+to NPCI members, our registry handles are invented.
+
+\section{Reflection}
+\textbf{Difficulty faced.} We expected provenance to separate attack payments from legitimate ones cleanly. The first
+AgentDojo attack we inspected showed otherwise: the attacker's IBAN was inside the bill the customer had asked the agent to
+pay. When the real biller's account and the attacker's both come from the same document, their source is identical, and
+provenance alone cannot tell them apart. This is invoice redirection, one of the oldest frauds in business payments, so we
+could not treat it as a quirk of the benchmark. None of the obvious fixes worked. Trusting the document lets the fraud
+through, and distrusting it blocks every first bill payment. Asking a language model whether the account looks right
+reintroduces the injection risk we were trying to remove, since we assume the attacker knows that model's prompt. Asking the
+customer to confirm puts the decision back with someone who, by assumption, has not read the bill closely. The underlying
+tension was that we wanted to trust the customer's choice of document without trusting everything written in it. Working
+through it changed how we framed the problem. An instruction such as ``pay this bill'' authorises a particular biller, not
+whatever account number appears in the document, so the question became whether the payee is the account that biller has
+registered.
+
+\textbf{How we overcame it.}
+\begin{itemize}
+\item \textbf{Gave named documents their own class.} Payees taken from a document the customer named became class D and
+need confirmation, with the source shown, rather than being trusted or blocked. With a customer who approves everything,
+this still let 25 of 120 red-team attacks through. The cost was one extra confirmation on a first bill.
+\item \textbf{Checked documents against the biller registry.} A document that claims a registered biller must carry that
+biller's registered handle; otherwise the payment is blocked. Because the payment system maintains the registry, injected
+text cannot satisfy the check. This reduced 25 to 5, and every legitimate payment still completed.
+\item \textbf{Tested against other teams' failures.} Replaying the gaps reported by three concurrent projects (inflated
+amounts, changes to a saved payee, and laundering through a file the agent wrote) broke our second version. The third
+version adds a rule for each and completes all 150 legitimate payments.
+\item \textbf{Made a mistaken confirmation recoverable.} A confirmed payment is held for several hours with a cancel link,
+following UK FCA guidance FG24/6 and DBS's new-payee cooling period, so the 10 attacks that a customer who approves
+everything would let through are all held rather than paid immediately.
+\item \textbf{Still open.} Payees that no registry covers, such as a landlord named in a document, depend on the customer's
+confirmation.
+\end{itemize}
+

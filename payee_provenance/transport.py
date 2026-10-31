@@ -57,10 +57,14 @@ def to_openai(messages):
     return out
 
 
-def chat_openai_compatible(model, messages, tools, retries=8):
+def chat_openai_compatible(model, messages, tools, retries=8, temperature=0, json_mode=False):
     provider, name = model.split(":", 1)
     url, var = PROVIDERS[provider]
-    body = {"model": name, "temperature": 0, "messages": to_openai(messages), "tools": tools}
+    body = {"model": name, "temperature": temperature, "messages": to_openai(messages)}
+    if tools:
+        body["tools"] = tools
+    if json_mode:
+        body["response_format"] = {"type": "json_object"}
     data = json.dumps(body).encode()
     for attempt in range(retries):
         req = urllib.request.Request(url, data=data, headers={

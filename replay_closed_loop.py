@@ -14,7 +14,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from closed_loop import gate_decide  # noqa: E402
-from payee_provenance.gate import BLOCK, STEP_UP, Beneficiary, canon  # noqa: E402
+from payee_provenance.gate import ALLOW, BLOCK, STEP_UP, Decision, record_beneficiary  # noqa: E402
 from payee_provenance.scenarios import build  # noqa: E402
 
 
@@ -36,9 +36,8 @@ def replay(path):
                 diffs.append((r["sid"], ev["tool"], ev["args"], ev.get("verdict"), d.verdict))
             ok = ev.get("verdict") != BLOCK and (ev.get("verdict") != STEP_UP or ev.get("customer_confirmed"))
             if ok and ev["tool"] in ("add_payee", "update_payee"):
-                p = canon(ev["args"].get("payee") or ev["args"].get("new") or "")
-                s.beneficiaries[p] = Beneficiary(p, "D_CONFIRMED" if ev.get("cls") == "D" else ev.get("cls", "UNKNOWN"),
-                                                 "in session", recently_changed=ev["tool"] == "update_payee")
+                record_beneficiary(s, ev["args"].get("payee") or ev["args"].get("new") or "",
+                                   Decision(ALLOW, ev.get("cls", "UNKNOWN"), "", []))
     print(f"{path}: {same}/{calls} recorded gated calls get the same verdict from the current gate")
     for d in diffs:
         print("  DIFF", d)

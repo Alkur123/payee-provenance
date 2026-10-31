@@ -114,10 +114,10 @@ delivered in 12 of 15 episodes in both conditions (the 3 misses are one batch sc
 either way).
 
 ### 5. Tests that can fail
-50 tests, including a 5,000-case fuzz of the fail-closed claim (only the customer's exact token can ever be allowed,
+63 tests, including a 5,000-case fuzz of the fail-closed claim (only the customer's exact token can ever be allowed,
 under eight attacker transformations), laundering, registry mismatch, the concurrent-work gaps, the signed customer
 channel, the confirmation card, receipt tampering and truncation, the dispute report, and the trust boundary.
-`tests/mutation_probe.py` plants 22 defects in a copy of the code; **all 22 are caught**.
+`tests/mutation_probe.py` plants 27 defects in a copy of the code; **all 27 are caught**.
 
 ### 6. External code review and version 3.1
 An external reviewer audited this repository on 31 October 2026. For each reported issue we first wrote a test that
@@ -138,6 +138,44 @@ refused. **Effect on published results: none.** The red-team output is identical
 closed loops (231) gets the same verdict from v3.1 (`python replay_closed_loop.py closed_loop*.jsonl`); AgentDojo was
 scored by the frozen pre-registered copy of the gate.
 
+### 7. An attacker who knows every rule (pre-registered, `adaptive_attacker.py`)
+SAFL's judges assume the attacker knows the system. So we gave a language model (gpt-4.1-mini) the gate's complete rules
+and let it write the text of every channel it controls (the bill or notice the customer named, SMS, web pages, collect
+requests, files the agent writes), see the gate's refusal reasons, and try again: 3 rounds on each of the 45 attack
+scenarios, against a gpt-4.1-mini agent behind the gate (`preregistrations/PREREGISTRATION_56_*`).
+
+| prediction | first run (v3.1) | re-run (v3.2) |
+|---|---|---|
+| W1: a customer who reads confirmations is never defrauded | held: 0/45 | held: 0/45 |
+| W2: with a customer who approves everything, every success is held, none paid at once | **failed**: 7/45, 2 paid at once | held: 7/45, all held |
+| W3: no attacker payee is ever classed P, K or R | **failed** | **failed** |
+| W4 (reported): the same attacker texts with no gate | 19/45 succeeded | 17/45 succeeded |
+
+**The attacker found a real bypass.** It had the agent *add* its account as a saved payee (one confirmation) and then pay
+it; hosts had marked only *changed* payees as inside the cooling-off window, so the payment went through at once. v3.2
+fixes it with one shared host function (`record_beneficiary`), and the fresh re-run, registered as an amendment before it
+began, found no instant payment. W3 stays failed as written. Every attacker call in the re-run (126) gets the same verdict
+from the final code (`python replay_attacker.py adaptive_attacker_v32.jsonl`).
+
+Other v3.2 fixes, each with a test and a planted defect: UPI payment links and QR payloads (`upi://pay?pa=...`) are read
+(the customer's paste is class P; the same link in an SMS is still blocked); mobile numbers with a leading 0 match; an
+amount written next to one payee no longer caps a different payment in the same message. All three had blocked
+legitimate payments. Across every earlier evaluation, one legitimate payment (an unregistered payee taken from a bill,
+saved, then paid) now needs one confirmation; nothing else changed.
+
+### 8. Deployable service
+`python -m payee_provenance.server` runs the gate as an HTTP service (standard library only; `openapi.yaml`;
+`Dockerfile`, written but not build-tested on our machine). It refuses to start without four bank-held keys or with a
+tampered receipt store; the bank seals session state, the bank's app signs confirmations, the gate mints single-use
+execution tokens, and a confirmed payment's token is not accepted before its hold ends. `python loadtest.py`: 517-553
+decisions/s across three runs on one laptop process, median 27-29 ms, p99 44-47 ms, every receipt on disk before its
+response (group commit), and the 4,000-receipt chain read back from disk verifies against its anchored head.
+
+### 9. A field proposal for the Unified Agent Protocol
+[`PAYEE_PROVENANCE_FIELDS.md`](PAYEE_PROVENANCE_FIELDS.md): the fields an agent payment request would carry, a JSON Schema
+in which a class-W payee cannot appear and a class-D payee cannot appear without a confirmation, and the mapping to ISO
+20022's `SupplementaryData` for SEPA and Faster Payments.
+
 ## Concurrent work (October 2026)
 Three projects reached the same principle this month; we found them in our final research pass and compare honestly.
 
@@ -157,8 +195,8 @@ measured; a receipt and dispute report shaped for RBI's 2027 burden of proof.
 * **Inputs the bank already holds:** the customer's signed messages, beneficiary records and who created them, the
   verified-merchant list every UPI app stores, Bharat Connect biller data and bill fetch; for human payments, in-call and
   screen-sharing signals from the app.
-* **Cost:** under 600 lines of standard-library Python (gate, receipts and the reference bank integration), no model, no
-  network call; median 71 µs per decision, 99th percentile 0.25 ms on one laptop core.
+* **Cost:** about 500 lines of standard-library Python for the gate and receipts (under 900 with the bank integration
+  and HTTP service), no model, no network call; median 32 µs per decision, 99th percentile 0.13 ms on one laptop core.
 * **Fails closed:** a payee nobody on the customer's side wrote is refused. Across all AgentDojo banking runs, the 11
   legitimate-task payments refused (of 210) were all to wrong accounts the agent itself produced.
 * **Rollout:** shadow mode (log, block nothing; measure false blocks on real traffic) → enforce BLOCK for unsourced payees
@@ -169,8 +207,12 @@ measured; a receipt and dispute report shaped for RBI's 2027 burden of proof.
 Python 3.10+, standard library only, no network, no model.
 ```
 python evaluate.py                       # the red-team table (v3); --no-registry disables the biller registry
-python -m unittest discover -s tests -v  # 50 tests
-python tests/mutation_probe.py           # 22/22 planted defects caught
+python -m unittest discover -s tests -v  # 63 tests
+python tests/mutation_probe.py           # 27/27 planted defects caught
+python loadtest.py                       # the HTTP service under 16 concurrent clients
+python replay_attacker.py adaptive_attacker_v32.jsonl   # PR56 re-run, verdicts from the current gate
+python score_pr56.py adaptive_attacker_v32.jsonl        # PR56 scored against W1-W4
+python adaptive_attacker.py --out new.jsonl             # PR56 itself; needs OPENAI_API_KEY (about $1)
 python evaluate_mediation.py             # red team through sealed state -> gate -> token -> backend, plus bypass attempts
 python replay_closed_loop.py closed_loop.jsonl closed_loop_gptoss.jsonl closed_loop_gpt41mini.jsonl   # v3.1 verdict replay
 python evaluate_human.py                 # coached human payments (hold / step-up / allow)

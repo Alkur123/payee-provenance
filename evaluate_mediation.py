@@ -9,7 +9,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from payee_provenance.bank_api import GatedPaymentAPI, PaymentBackend, Refused, seal_session  # noqa: E402
-from payee_provenance.gate import Beneficiary, canon  # noqa: E402
+from payee_provenance.gate import record_beneficiary  # noqa: E402
 from payee_provenance.scenarios import build  # noqa: E402
 
 BANK, GATE = b"bank-key-for-evaluation-only-32b", b"gate-key-for-evaluation-only-32b"
@@ -49,9 +49,7 @@ def main():
             else:
                 ok_all &= done
             if done and op in ("add_payee", "update_payee"):
-                p = canon(new or target)
-                s.beneficiaries[p] = Beneficiary(p, "P" if out["decision"].payee_class == "P" else "D_CONFIRMED",
-                                                 "in session", recently_changed=op == "update_payee")
+                record_beneficiary(s, new or target, out["decision"])
         if any(not a.attacker for a in sc.actions):
             leg_total += 1
             leg_done += ok_all

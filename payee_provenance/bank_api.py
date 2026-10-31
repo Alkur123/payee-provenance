@@ -19,6 +19,7 @@ import hashlib
 import hmac
 import json
 import secrets
+import time
 from dataclasses import asdict
 from typing import Dict, List, Optional, Tuple
 
@@ -74,8 +75,20 @@ def open_session(blob: bytes, seal: str, bank_key: bytes) -> Session:
     )
 
 
-def _token_body(op: str, target: str, amount: float, nonce: str) -> bytes:
-    return json.dumps([op, canon(target), round(float(amount), 2), nonce], separators=(",", ":")).encode("utf-8")
+def _token_body(op: str, target: str, amount: float, nonce: str, not_before: float = 0.0) -> bytes:
+    body = [op, canon(target), round(float(amount), 2), nonce]
+    if not_before:
+        body.append(round(float(not_before), 3))          # a held payment: the token is bound to its release time
+    return json.dumps(body, separators=(",", ":")).encode("utf-8")
+
+
+def mint_token(gate_key: bytes, op: str, target: str, amount: float, not_before: float = 0.0) -> dict:
+    nonce = secrets.token_hex(16)
+    tag = hmac.new(gate_key, _token_body(op, target, amount, nonce, not_before), hashlib.sha256).hexdigest()
+    tok = {"nonce": nonce, "tag": tag}
+    if not_before:
+        tok["not_before"] = round(float(not_before), 3)
+    return tok
 
 
 class PaymentBackend:
@@ -86,14 +99,18 @@ class PaymentBackend:
         self._spent: set = set()
         self.executed: List[dict] = []
 
-    def execute(self, op: str, target: str, amount: float = 0.0, token: Optional[dict] = None) -> dict:
+    def execute(self, op: str, target: str, amount: float = 0.0, token: Optional[dict] = None,
+                now: Optional[float] = None) -> dict:
         if op not in OPS:
             raise Refused(f"unknown operation {op!r}")
         if not token or "nonce" not in token or "tag" not in token:
             raise Refused("no execution token: every operation must pass through the gate")
-        body = _token_body(op, target, amount, token["nonce"])
+        nb = float(token.get("not_before", 0.0))
+        body = _token_body(op, target, amount, token["nonce"], nb)
         if not hmac.compare_digest(hmac.new(self._key, body, hashlib.sha256).hexdigest(), str(token["tag"])):
             raise Refused("execution token does not match this operation, payee and amount")
+        if nb and (time.time() if now is None else now) < nb:
+            raise Refused(f"held: this payment cannot be released before {nb}")
         if token["nonce"] in self._spent:
             raise Refused("execution token already used")
         self._spent.add(token["nonce"])
@@ -131,6 +148,5 @@ class GatedPaymentAPI:
         if not go:
             return {"decision": d, "executed": None}
         exec_target = new_value if op == "update_payee" else target
-        nonce = secrets.token_hex(16)
-        tag = hmac.new(self._gate_key, _token_body(op, exec_target, amount, nonce), hashlib.sha256).hexdigest()
-        return {"decision": d, "executed": self.backend.execute(op, exec_target, amount, {"nonce": nonce, "tag": tag})}
+        tok = mint_token(self._gate_key, op, exec_target, amount)
+        return {"decision": d, "executed": self.backend.execute(op, exec_target, amount, tok)}

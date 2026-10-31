@@ -67,22 +67,30 @@ class ReceiptChain:
                 return False
         return True
 
-    def save(self, path: str) -> None:
-        """Append-only JSON Lines: entries already in the file are never rewritten."""
+    def save(self, path: str, upto: Optional[int] = None) -> None:
+        """Append-only JSON Lines: entries already in the file are never rewritten. `upto` writes only the first `upto`
+        entries (a snapshot), so a caller can flush outside the lock that guards appends (group commit)."""
         import os
-        have = 0
-        if os.path.exists(path):
-            with open(path, encoding="utf-8") as f:
-                have = sum(1 for line in f if line.strip())
+        have = getattr(self, "_saved", None)
+        if have is None or getattr(self, "_saved_path", None) != path:
+            have = 0
+            if os.path.exists(path):
+                with open(path, encoding="utf-8") as f:
+                    have = sum(1 for line in f if line.strip())
+        end = len(self.entries) if upto is None else upto
         with open(path, "a", encoding="utf-8") as f:
-            for rec in self.entries[have:]:
+            for rec in self.entries[have:end]:
                 f.write(json.dumps(rec, sort_keys=True) + "\n")
+            f.flush()
+            os.fsync(f.fileno())                          # a receipt is on disk before the caller acts on the decision
+        self._saved, self._saved_path = max(have, end), path
 
     @classmethod
     def load(cls, path: str, key: bytes) -> "ReceiptChain":
         c = cls(key)
         with open(path, encoding="utf-8") as f:
             c.entries = [json.loads(line) for line in f if line.strip()]
+        c._saved, c._saved_path = len(c.entries), path
         return c
 
     def dispute_category(self, seq: int) -> str:

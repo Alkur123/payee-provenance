@@ -37,8 +37,10 @@ account, the payee is P. It turns agent-borne fraud into ordinary human fraud, n
 """
 from __future__ import annotations
 
+import functools
 import re
 import unicodedata
+import urllib.parse
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Tuple
 
@@ -65,13 +67,27 @@ def canon(s: str) -> str:
         c = re.sub(r"[.\-+]", "", c)
         if len(c) == 12 and c.startswith("91"):            # +91 98765 43210 -> 9876543210 (Indian mobile)
             c = c[2:]
+        elif len(c) == 11 and c[0] == "0" and c[1] in "6789":   # 098765 43210 -> 9876543210 (trunk prefix, v3.1)
+            c = c[1:]
     return c
 
 
-def identifiers(text: str) -> set:
-    """Every payment identifier in a text, as canonical whole tokens."""
+@functools.lru_cache(maxsize=65536)
+def identifiers(text: str) -> frozenset:
+    """Every payment identifier in a text, as canonical whole tokens. Cached: a message or document is parsed once,
+    not on every decision."""
+    return frozenset(_identifiers_uncached(text))
+
+
+def _identifiers_uncached(text: str) -> set:
     t = unicodedata.normalize("NFKC", str(text)).translate(_ZW).lower()
     found = set()
+    # UPI intent links and QR payloads (upi://pay?pa=<vpa>&pn=...): the payee is the URL-decoded pa parameter (v3.1)
+    for m in re.finditer(r"upi://[a-z]+\?[^\s\"'<>]+", t):
+        for pa in urllib.parse.parse_qs(urllib.parse.urlsplit(m.group(0)).query).get("pa", []):
+            c = canon(pa)
+            if _ID_PATTERNS[0].fullmatch(c):
+                found.add(c)
     for chunk in re.split(r"[\s,;:()\[\]<>\"'|!?/]+", t):
         chunk = canon(chunk.strip(".-_"))
         found.update(p.fullmatch(chunk).group(0) for p in _ID_PATTERNS if p.fullmatch(chunk))
@@ -80,7 +96,7 @@ def identifiers(text: str) -> set:
         c = m.group(0).replace(" ", "")
         found.update(p.fullmatch(c).group(0) for p in _ID_PATTERNS[1:3] if p.fullmatch(c))
     # Indian mobile numbers (payout-by-link and wallet payees), however they are spaced: +91 98765 43210, 98765-43210
-    for m in re.finditer(r"(?<![0-9])(?:\+?91[\s-]?)?[6-9][0-9]{4}[\s-]?[0-9]{5}(?![0-9])", t):
+    for m in re.finditer(r"(?<![0-9])(?:\+?91[\s-]?|0)?[6-9][0-9]{4}[\s-]?[0-9]{5}(?![0-9])", t):
         found.add(canon(m.group(0)))
     return found
 
@@ -191,6 +207,47 @@ def registry_check(payee: str, s: Session) -> Optional[Tuple[str, str]]:
     return None
 
 
+def stated_amounts_for(payee: str, s: Session) -> List[float]:
+    """The customer-stated amounts that bind THIS payee (v3.2). An amount written in the same clause as a payee identifier
+    binds that payee only; an amount in a clause with no identifier ("pay the bill, up to Rs 2,000") binds every payment.
+    So "pay Rs 500 to ravi@okaxis, and the invoice in inv.txt" no longer caps the invoice at Rs 500, while the bill-level
+    ceiling still applies to the bill. Amounts the host listed but that appear in no clause stay global (conservative)."""
+    if not s.principal_amounts:
+        return []
+    bound, unbound = _amount_bindings(tuple(s.principal_messages), tuple(s.principal_amounts))
+    p = canon(payee)
+    if p in bound:
+        return sorted(bound[p] | unbound)
+    return sorted(unbound)
+
+
+@functools.lru_cache(maxsize=4096)
+def _amount_bindings(messages: tuple, amounts: tuple):
+    """Parse once per (messages, amounts): the customer's text does not change within a session."""
+    want = {round(a, 2) for a in amounts}
+    bound: Dict[str, frozenset] = {}
+    unbound, seen = set(), set()
+    for msg in messages:
+        for clause in re.split(r"\band\b|(?<![0-9])[,;.](?![0-9])|\n", msg.lower()):
+            ids = identifiers(clause)
+            nums = set()
+            for tok in re.findall(r"[0-9][0-9,]*(?:\.[0-9]+)?", clause):
+                try:
+                    v = round(float(tok.replace(",", "")), 2)
+                except ValueError:
+                    continue
+                if v in want and canon(tok) not in ids:
+                    nums.add(v)
+            seen |= nums
+            if ids and nums:
+                for i in ids:
+                    bound[i] = frozenset(bound.get(i, frozenset()) | nums)
+            else:
+                unbound |= nums
+    unbound |= want - seen
+    return bound, frozenset(unbound)
+
+
 def _stricter(a: str, b: str) -> str:
     order = {ALLOW: 0, STEP_UP: 1, BLOCK: 2}
     return a if order[a] >= order[b] else b
@@ -207,7 +264,8 @@ def decide_payment(payee: str, amount: float, s: Session) -> Decision:
             verdict = ALLOW if rc[0] == "R" else BLOCK
             reasons.append(f"registry: {rc[1]}")
     b = s.beneficiaries.get(canon(payee))
-    if cls == "K" and b is not None and b.recently_changed:
+    registered = canon(payee) in {canon(h) for h in s.biller_registry.values()}
+    if cls == "K" and b is not None and b.recently_changed and not registered:   # a biller's registered handle is vouched for
         verdict = _stricter(verdict, STEP_UP)
         reasons.append("beneficiary changed inside the cooling-off window")
     if verdict == BLOCK:
@@ -215,7 +273,7 @@ def decide_payment(payee: str, amount: float, s: Session) -> Decision:
     # amount provenance: every applicable constraint is checked, and each can only make the decision stricter
     # (v3.1, after external review: a customer ceiling no longer switches off the bill-fetch or mandate checks)
     fetched = s.bill_fetch.get(canon(payee))
-    stated = s.principal_amounts
+    stated = stated_amounts_for(payee, s)
     stated_exactly = any(abs(amount - a) <= 1e-9 for a in stated)
     if stated and amount > max(stated) + 1e-9:
         verdict = BLOCK
@@ -236,6 +294,18 @@ def decide_payment(payee: str, amount: float, s: Session) -> Decision:
         verdict = _stricter(verdict, STEP_UP)
         reasons.append(f"amount {amount} above mandate cap {s.mandate_cap}")
     return Decision(verdict, cls, src, reasons)
+
+
+def record_beneficiary(s: Session, payee: str, d: Decision) -> Beneficiary:
+    """Run by the HOST after an add or change of a saved payee was allowed (or confirmed). One shared implementation, so
+    every host applies the same rule: the record inherits the action's provenance and is inside the cooling-off window
+    whether it was ADDED or CHANGED. (v3.2: found by the adaptive white-box attacker, PR56 - hosts had marked only
+    changes, so 'confirm add once, then pay' was paid instantly as class K instead of being held.)"""
+    p = canon(payee)
+    b = Beneficiary(p, "D_CONFIRMED" if d.payee_class == "D" else d.payee_class, "added or changed in this session",
+                    recently_changed=True)
+    s.beneficiaries[p] = b
+    return b
 
 
 def decide_add_beneficiary(payee: str, s: Session) -> Decision:

@@ -107,7 +107,7 @@ earlier; \textbf{R}, the registered handle of a biller; \textbf{D}, a document t
 Later rules can only make a decision stricter. A bill that claims to come from a registered biller must carry that biller's
 handle. The amount must match what the customer stated or the biller's bill fetch, and paying a saved payee more than last
 time, or soon after its details changed, requires confirmation. Each decision is written to a hash-chained, HMAC-signed
-receipt. The gate uses no model and makes no network call; it is under 600 lines of Python and takes a median of 71\,\textmu s
+receipt. The gate uses no model and makes no network call; it is about 500 lines of Python and takes a median of 32\,\textmu s
 per decision. We considered and rejected three alternatives. A second language model
 judging each payment can be injected through the same text. A known-payee allowlist blocks every first payment to a new
 payee (41.7\% of legitimate AgentDojo payments) and is bypassed by adding the payee first. A tighter spending limit still
@@ -181,7 +181,7 @@ admits small redirected payments; 80.7\% of real attacks would fit under one.
    hash-chained and HMAC-signed $\rightarrow$ dispute report}};
 \draw[line, dashed, draw=black!40] (block.south) -- (block.south |- rcpt.north);
 \end{tikzpicture}
-\caption{How the gate decides a single payment. The payee is classified by its source, using only records the bank holds, and later checks can only make the decision stricter. Injected text can therefore push a payee down to class W but cannot raise it to P, K or R. The gate uses no model and makes no network call (median 71\,\textmu s per decision).}
+\caption{How the gate decides a single payment. The payee is classified by its source, using only records the bank holds, and later checks can only make the decision stricter. Injected text can therefore push a payee down to class W but cannot raise it to P, K or R. The gate uses no model and makes no network call (median 32\,\textmu s per decision).}
 \label{fig:flow}
 \end{figure}
 
@@ -193,16 +193,17 @@ they do not hold the key that signs receipts. Knowing the rules does not help th
 only if it appears in a message the customer wrote or in a record that only authorised actions can create. There is no
 classifier to evade and no score threshold to stay below. Obfuscation works against the attacker: a homoglyph, a
 zero-width character or a look-alike VPA simply fails to match the customer's identifier, so the payee is classed W and
-blocked. A 5,000-case fuzz test checks this fail-closed property, and a mutation probe confirms that each of 22 deliberately planted defects is caught. The only secret is the receipt key. The remaining weakness is a customer who has
+blocked. A 5,000-case fuzz test checks this fail-closed property, and a mutation probe confirms that each of 27 deliberately planted defects is caught. The only secret is the receipt key. The remaining weakness is a customer who has
 been persuaded to type the scammer's account themselves.
 
-\textbf{How we evaluated it.} We used five sources of evidence. The first is every banking run published in AgentDojo, a
+\textbf{How we evaluated it.} We used six sources of evidence. The first is every banking run published in AgentDojo, a
 standard prompt-injection benchmark: 28 model and defence configurations, 15 attack types and 7,802 runs. The second is a
 closed loop in which three language models (gemma4, gpt-oss-120b and gpt-4.1-mini) act as the payment agent on 90
 scenarios, each run with and without the gate. The third places the gate in front of an Indian payment gateway's
 open-source payout server, built unmodified and run locally against a capture proxy, with two of those models. These three
 were pre-registered: predictions were written and hashed before any result was scored, and the one prediction that failed
-is reported. The fourth is a red team of 150 attacks across 15 Indian fraud patterns, written by us. The fifth is a set of
+is reported. The fourth is a red team of 150 attacks across 15 Indian fraud patterns, written by us. The fifth, also
+pre-registered, is an attacker model given the gate's full rules that adapts to its refusals. The sixth is a set of
 unit, property and mutation tests. We measured attacks that moved money, legitimate payments blocked and time per decision,
 against three baselines: no defence, a UPI-style spending limit and a known-payee allowlist. All data was synthetic.
 
@@ -218,7 +219,10 @@ payments were blocked, and in each case the agent was paying a wrong account it 
 \item \textbf{Real payout server.} Attacker payouts reached the payment API in 14 of 15 and 10 of 15 attack episodes
 without the gate, and in none with it. The server's own provenance labels, which the agent fills in, described the
 attacker's account as ``user input'' 12 times out of 20.
-\item \textbf{Cost.} A median of 71\,\textmu s per decision, with no model and no network call.
+\item \textbf{An attacker who knows every rule.} A language model given the gate's full rules wrote the bill, SMS and
+web text and retried after each refusal. Against a customer who reads confirmations it never succeeded (0 of 45). Its
+first run found a real bypass, which we fixed; on the fixed gate every attack that an approves-everything customer let
+through was held, and none was paid at once (Appendix~\ref{app:adaptive}).
 \end{itemize}
 
 \begin{figure}[t]
@@ -558,8 +562,46 @@ Tool results could be paired with the wrong call in the model adapter & not a bu
 \textbf{Effect on the published results: none.} The red team's output is identical before and after the fixes, including
 legitimate-payment friction. Every gated tool call recorded in the three closed loops (231 calls) receives the same verdict
 from version 3.1, so each agent would have taken the same path. The AgentDojo results were scored by the frozen,
-pre-registered copy of the gate. The test suite grew from 32 to 50 tests, and the mutation probe from 15 to 22 planted
-defects, all caught.
+pre-registered copy of the gate. With these and the later fixes in Appendix~\ref{app:adaptive}, the test suite grew from
+32 to 63 tests and the mutation probe from 15 to 27 planted defects, all caught.
+
+\subsection{An attacker who knows every rule (pre-registered)}\label{app:adaptive}
+SAFL's judges assume the attacker knows the system's logic. We tested exactly that (pre-registration PR56, hashed before
+the harness existed). A language model (gpt-4.1-mini) was given the gate's complete rules, the customer's task, its own
+account and the channels it controls (the bill or notice the customer named, SMS, web pages, collect requests, files the
+agent writes). It wrote the text of those channels; after a failed attempt it was told the gate's verdict and reasons and
+tried again, up to three rounds, on all 45 attack scenarios. The agent was gpt-4.1-mini behind the gate. Its ideas were
+those of a white-box attacker: claim the fraud account is the ``registered payee'', place it where the customer's words
+should be, get it saved first and paid second.
+{\small
+\begin{longtable}{p{7.4cm}p{\dimexpr\linewidth-11.4cm-6\tabcolsep\relax}p{4cm}}
+\toprule
+prediction & first run (gate v3.1) & re-run (gate v3.2)\\
+\midrule
+W1: with a customer who reads confirmations, no attack succeeds & held: 0/45 (135 attacker texts) & held: 0/45 (135)\\
+W2: with a customer who approves everything, every attack that succeeds is held, none paid at once & \textbf{failed}:
+7/45 succeeded, 2 paid at once & held: 7/45 succeeded, all held\\
+W3: no attacker payee is ever classed P, K or R & \textbf{failed} & \textbf{failed}\\
+W4 (reported): the same attacker texts without the gate & 19/45 succeeded & 17/45 succeeded\\
+\bottomrule
+\end{longtable}}
+\textbf{The bypass the attacker found.} It had the agent \emph{add} its account as a saved payee (a confirmation, which
+the approves-everything customer accepted) and then pay it. A saved payee is class K, and the hosts in our code had
+marked only \emph{changed} payees as inside the cooling-off window, not \emph{added} ones, so the payment went through at
+once instead of being held: the claim that one deceived click is not enough was false for this path. The fix (v3.2) is
+one shared function every host uses, which puts a payee in the cooling-off window whether it was added or changed,
+except a biller's registered handle. The fresh re-run, written before it began as an amendment to the pre-registration,
+found no instant payment. W3 stays failed: after an approved add, the attacker's account is class K and is held, which
+the prediction did not allow for; in the amount-inflation family the payee is genuinely the customer's. Every attacker
+call recorded in the re-run (126) gets the same verdict from the final code.
+
+\textbf{Other fixes in v3.2, each with a test and a planted defect that the tests catch.} UPI payment links and QR
+payloads (\texttt{upi://pay?pa=...}) are now read: a link the customer pastes is the customer's own payee, and the same
+link in an SMS is still blocked. Mobile numbers written with a leading 0 now match. An amount the customer wrote next to
+one payee no longer caps a different payment in the same message, while a ceiling with no payee beside it (``the bill, up
+to Rs 2,000'') still applies to every payment. These three had all failed closed, blocking legitimate payments. Across
+every earlier evaluation the only change is one legitimate payment, to an unregistered payee taken from a bill, saved and
+then paid, which now needs one confirmation. The suite is 63 tests, and all 27 planted defects are caught.
 
 \subsection{Tests that can fail}
 
@@ -579,7 +621,7 @@ vendor-master change from an e-mail blocks; a recently changed payee needs confi
 normalisation, allowing registry mismatches, skipping the receipt MAC, stepping up instead of blocking world payees,
 treating agent-written files as delegation, ignoring the bill fetch, ignoring the last-paid amount, not gating payee changes,
 ignoring the cooling-off window, dropping separator canonicalisation, not checking the principal signature, paying a
-confirmed step-up at once, ignoring the coaching signal): \textbf{15/15 caught}; after the external review (Appendix~\ref{app:review}) seven more, three re-planting the bugs it found and four breaking the trust boundary, bring it to \textbf{22/22}. The first run of the original
+confirmed step-up at once, ignoring the coaching signal): \textbf{15/15 caught}; the external review and the adaptive attacker (Appendices~\ref{app:review} and~\ref{app:adaptive}) added twelve more, re-planting each bug they found and breaking the trust boundary, for \textbf{27/27}. The first run of the original
 six caught 5/6; the survivor (normalisation) only ever made the gate stricter, and we added the missing usability test
 rather than leaving the property unpinned.
 \end{itemize}
@@ -597,8 +639,8 @@ UPI app already stores and Bharat Connect biller data; bill fetch for registered
 payment check adds two device signals a banking app can read (a call with an unknown number, screen sharing or remote
 access) and the account's own 24-hour outflow.
 
-\textbf{What it costs.} under 600 lines of standard-library Python (gate and receipts), no model and no network call. On one
-laptop core: median 71\,\textmu s per decision, 99th percentile 0.25\,ms (6,000 decisions over the scenario set). It adds
+\textbf{What it costs.} about 500 lines of standard-library Python (gate and receipts), no model and no network call. On one
+laptop core: median 32\,\textmu s per decision, 99th percentile 0.13\,ms (6,000 decisions over the scenario set). It adds
 no measurable latency to a UPI payment.
 
 \textbf{How it fails.} Closed. A payee that appears nowhere the customer or the bank wrote is class W and is refused; no
@@ -619,6 +661,26 @@ with the confirmation card in the customer's language.
 Measures to report each month: false-block rate, confirmation rate, holds cancelled by the customer, fraud loss on agent
 payments, and time to resolve a dispute using the signed receipt (the evidence the bank needs under RBI's 2027 burden of
 proof).
+
+\paragraph{As a service.} The repository includes the gate as an HTTP service that uses only Python's standard library
+(\texttt{payee\_provenance/server.py}, an OpenAPI description and a Dockerfile). It refuses to start unless four keys
+held by the bank are supplied: one seals the session state the bank builds from its own records, one signs the customer's
+answer to a confirmation in the bank's app, one mints the execution tokens the payment backend requires, and one signs
+the receipt chain. It also refuses to start if the stored receipt chain does not verify. A confirmed payment receives a
+token that the backend will not accept before the hold ends, so the hold is enforced by the backend rather than by
+convention. Six tests drive it over real HTTP. On one laptop process, 16 concurrent clients sending 4,000 mixed requests
+received 517 to 553 decisions per second across three runs (median 27--29\,ms, 99th percentile 44--47\,ms). Every
+response waits until its receipt is on disk; one disk flush covers all receipts waiting at that moment (group commit),
+and after each run all 4,000 receipts were on disk and the chain read back from disk verified against its anchored head.
+The decision itself takes a median of 32\,\textmu s; in-process without durable writes the service makes 11,436
+decisions per second, so throughput is set by the disk, not the gate. A single receipt chain is a serialisation point,
+so a bank would run one chain per shard (per customer or per agent), each anchored separately. We wrote the Dockerfile but could not build-test it on the evaluation machine.
+
+\paragraph{A field proposal for the Unified Agent Protocol.} \texttt{PAYEE\_PROVENANCE\_FIELDS.md} in the repository
+specifies the fields an agent payment request would carry (provenance class and source, the gate's decision, any
+confirmation and hold, and references to the signed receipt and the mandate), with a JSON Schema in which a class-W payee
+cannot appear and a class-D payee cannot appear without a confirmation. The same object fits ISO 20022's
+\texttt{SupplementaryData} block, so it can travel on SEPA or Faster Payments messages as well as UPI.
 
 \paragraph{Beyond India.} Payment systems elsewhere have added the same kind of check India has. Since 9 October 2025,
 eurozone payment providers must offer Verification of Payee on every euro credit transfer: the payee's bank compares the
@@ -653,7 +715,7 @@ the evidence a bank needs to meet the burden of proof; a sandbox-ready test plan
 risk scores). & Provenance class as a feature for transaction risk scores; W-class payees as a cross-check against mule
 lists.\\
 \textbf{Banks, PSPs, TPAPs} & Beneficiary name look-up (RTGS/NEFT, from 1 Apr 2025); beneficiary cooling-off practice. &
-A drop-in check in front of any agent payment API (under 600 lines, no model, no extra network call) that also gates payee
+A drop-in check in front of any agent payment API (about 500 lines, no model, no extra network call) that also gates payee
 changes, and a dispute report from verified receipts.\\
 \textbf{SROs (FACE, UFF)} & RBI-recognised fintech SROs (FACE 2024; Unified Fintech Forum, Sept 2026) with codes of conduct
 and dispute resolution. & The scenario catalogue as a conformance test for members' agent payment products.\\

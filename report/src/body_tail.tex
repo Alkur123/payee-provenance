@@ -1,0 +1,59 @@
+\section{Deliverables and declarations}
+{\small
+\begin{longtable}{@{}p{3.6cm}p{\dimexpr\linewidth-3.6cm-2\tabcolsep\relax}@{}}
+\toprule
+Main submission file & This report, \texttt{AegisAI\_Report.pdf}.\\
+Code repository & \repo{}. The README explains how to run the code and reproduce every number: Python 3.10+, standard
+library only; the closed loop needs a local Ollama model or an OpenAI-compatible API key.\\
+Demo video & \url{https://github.com/Alkur123/payee-provenance/raw/main/media/demo.mp4} (1 min 51 s).\\
+Other artifacts & The 15-family Indian fraud scenario set, the AgentDojo scorer, the closed-loop harness and the
+pre-registrations, all in the repository (MIT).\\
+Done during the hackathon? & Built on earlier work by the same author. \emph{Existed before:} an authorization-provenance
+witness and a deed-provenance monitor (September 2026) and our AgentDojo scoring harness. \emph{Added in the window (31
+October 2026):} the payee-provenance gate and its rules, signed receipts and dispute report, the Indian red team, the
+coached-payment check and holds, six pre-registered evaluations, the tests, the video and this report.\\
+AI tools used & Claude Opus 5.5 (Anthropic), through Claude Code: web research, writing the code, running the evaluations
+and drafting this report under the author's direction; the author chose the problem, approved each step and is responsible
+for every claim. Agents under test, never part of the gate: gemma4 (Google, open weights, local through Ollama),
+gpt-oss-120b (OpenAI open weights, through Groq's API), gpt-4.1-mini-2025-04-14 (OpenAI, through OpenAI's API).\\
+External code, models, data & AgentDojo task definitions and published run logs, commit \texttt{089ed468} (MIT, ETH Z\"urich
+SPY Lab), read-only; the three models above (evaluation only, synthetic data); Python standard library. Our code and
+scenarios: MIT.\\
+All links open publicly & Yes (checked logged out on 31 October 2026).\\
+\bottomrule
+\end{longtable}}
+
+\section{Responsible testing}
+{\small
+\begin{longtable}{@{}p{3.6cm}p{\dimexpr\linewidth-3.6cm-2\tabcolsep\relax}@{}}
+\toprule
+No real personal data & \textbf{Yes.} Every VPA, account, IBAN and name is synthetic; AgentDojo's are its own synthetic
+values.\\
+Responsible disclosure & \textbf{Yes.} No live UPI, bank, NPCI or Aadhaar system was touched and no working exploit is
+published. One design observation about a real open-source payout server (Appendix~\ref{app:realtool}) is being shared
+privately with SAFL at team@secureaifutureslab.com, as this template asks; we name neither the vendor nor step-by-step
+details here.\\
+Environment & A local Python mock of a UPI-style rail with Reserve Pay-style mandates and a stand-in biller registry;
+AgentDojo's published logs; an Indian payment gateway's open-source payout server built from source and run locally against
+a capture proxy with dummy credentials (no vendor system contacted); gemma4 run locally, two models by API. No real
+transactions or accounts were involved.\\
+\bottomrule
+\end{longtable}}
+
+\section{Ownership, permissions and consent}
+Answered in the submission form, with every member's agreement.
+
+\appendix
+\section{Evidence in detail}\label{app:evidence}
+%%EVIDENCE%%
+
+\section{How a bank deploys it}\label{app:bank}
+%%DEPLOY%%
+
+\section{Related and concurrent work}
+%%RELATED%%
+
+%%SUPP%%
+
+%%SOURCES%%
+\end{document}

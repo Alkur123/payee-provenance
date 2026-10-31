@@ -1,0 +1,29 @@
+\subsection{External code review and the fixes it led to (version 3.1)}\label{app:review}
+On 31 October an external reviewer audited the public repository. For each reported issue we first wrote a test that fails
+if the issue is real, then changed the code. Five issues were real; one was not.
+{\small
+\begin{longtable}{p{4.4cm}p{2.4cm}p{\dimexpr\linewidth-10.1cm-8\tabcolsep\relax}p{3.3cm}}
+\toprule
+finding & verdict & fix & evidence\\
+\midrule
+A customer ceiling (``up to Rs 2,000'') switched off the bill-fetch check, so Rs 1,950 on a Rs 1,840 bill was allowed &
+real bug & every applicable amount rule now applies, and each can only tighten the decision & failing test before, passing
+after\\
+A registered biller's name matched inside another word (``Jio'' in ``Majiority'') & real bug; it failed closed, wrongly
+blocking a legitimate payment & whole-word matching & failing test before, passing after\\
+The receipt chain could be rolled back to an older valid prefix & design gap & \texttt{head()} to store outside the
+receipt store; \texttt{verify(anchor)} detects truncation; append-only file & test\\
+The decision API accepted any session object, so the trust boundary rested on the integrator & design gap & the bank
+seals the session state with its own key; the API refuses unsealed or altered state & three tests\\
+Nothing guaranteed that every money-moving route passes through the gate & design gap & the payment backend executes only
+with a single-use token minted by the gate for that exact operation, payee and amount & red team through the full path:
+0/190 attacker actions executed; 190/190 direct calls, 180/180 token replays and 180/180 redirected tokens refused\\
+Tool results could be paired with the wrong call in the model adapter & not a bug & none & two tests pass\\
+\bottomrule
+\end{longtable}}
+\textbf{Effect on the published results: none.} The red team's output is identical before and after the fixes, including
+legitimate-payment friction. Every gated tool call recorded in the three closed loops (231 calls) receives the same verdict
+from version 3.1, so each agent would have taken the same path. The AgentDojo results were scored by the frozen,
+pre-registered copy of the gate. The test suite grew from 32 to 50 tests, and the mutation probe from 15 to 22 planted
+defects, all caught.
+

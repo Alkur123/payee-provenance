@@ -24,7 +24,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from payee_provenance.gate import (ALLOW, BLOCK, STEP_UP, Beneficiary, canon, decide_add_beneficiary,  # noqa: E402
+from payee_provenance.gate import (ALLOW, BLOCK, STEP_UP, Beneficiary, canon, decide_add_beneficiary, record_beneficiary,  # noqa: E402
                                    decide_collect, decide_credential, decide_payment, decide_update_beneficiary)
 from payee_provenance.receipt import ReceiptChain  # noqa: E402
 from payee_provenance.scenarios import build  # noqa: E402
@@ -61,9 +61,7 @@ def gate_step(policy, act, s, chain):
         confirmed = (not act.attacker) if policy == "gate_careful" else True
     executed = d.verdict == ALLOW or (d.verdict == STEP_UP and confirmed)
     if executed and act.op in ("add_beneficiary", "update_beneficiary"):
-        s.beneficiaries[canon(act.payee)] = Beneficiary(canon(act.payee), "D_CONFIRMED" if d.payee_class == "D"
-                                                        else d.payee_class, "added in session",
-                                                        recently_changed=act.op == "update_beneficiary")
+        record_beneficiary(s, act.payee, d)
     chain.append(agent_id="agent-demo", mandate_id="RP-001", mandate_version=1,
                  instruction=" | ".join(s.principal_messages), payee=act.payee, amount=act.amount,
                  payee_class=d.payee_class, source=d.source, verdict=d.verdict, confirmed_by_customer=confirmed, ts=0)
