@@ -582,7 +582,7 @@ the evidence a bank needs to meet the burden of proof; a sandbox-ready test plan
 risk scores). & Provenance class as a feature for transaction risk scores; W-class payees as a cross-check against mule
 lists.\\
 \textbf{Banks, PSPs, TPAPs} & Beneficiary name look-up (RTGS/NEFT, from 1 Apr 2025); beneficiary cooling-off practice. &
-A drop-in check in front of any agent payment API (about 250 lines, no model, no extra network call) that also gates payee
+A drop-in check in front of any agent payment API (424 lines, no model, no extra network call) that also gates payee
 changes, and a dispute report from verified receipts.\\
 \textbf{SROs (FACE, UFF)} & RBI-recognised fintech SROs (FACE 2024; Unified Fintech Forum, Sept 2026) with codes of conduct
 and dispute resolution. & The scenario catalogue as a conformance test for members' agent payment products.\\
@@ -599,6 +599,39 @@ Predictions are written and hashed before any scoring.
 Hindi, English and regional languages; the coached-payment check on a bank's real call and device signals;
 integration with Bharat Connect bill fetch and NPCI verified-merchant data; a draft field specification for the Unified
 Agent Protocol; a pilot with one PSP.
+
+\section{How a bank deploys it}
+\textbf{Where it runs.} At the bank, PSP or payment app endpoint that receives an agent's payment request, before the UPI
+request is formed. It does not depend on which agent the customer uses, so a bank can enforce it on every agent at once.
+
+\textbf{What it reads, all of which the bank already holds.} The customer's own messages to the agent (signed by the bank's
+app, so the agent platform cannot forge them); beneficiary records and who created each; the verified-merchant list every
+UPI app already stores and Bharat Connect biller data; bill fetch for registered billers. For human payments, the coached-
+payment check adds two device signals a banking app can read (a call with an unknown number, screen sharing or remote
+access) and the account's own 24-hour outflow.
+
+\textbf{What it costs.} 424 lines of standard-library Python (gate and receipts), no model and no network call. On one
+laptop core: median 74\,\textmu s per decision, 99th percentile 0.24\,ms (6,000 decisions over the scenario set). It adds
+no measurable latency to a UPI payment.
+
+\textbf{How it fails.} Closed. A payee that appears nowhere the customer or the bank wrote is class W and is refused; no
+input can raise a payee's class except the customer's signed words, the bank's records or the registry. Across all of
+AgentDojo's banking runs, the 11 legitimate-task payments it refused (of 210) were all to a wrong account the agent itself
+produced: refusing them was correct.
+
+\textbf{Rollout we propose to a bank.}
+\begin{enumerate}
+\item \textbf{Shadow mode} (block nothing): log every verdict on real agent payments for a few weeks and measure the
+false-block rate on the bank's own traffic, the number that decides everything after.
+\item \textbf{Enforce BLOCK for class W and registry mismatches}: payees nobody on the customer's side wrote, and bills
+whose account is not the claimed biller's registered handle. Lowest risk to legitimate payments; it covers the SMS, web,
+collect-request and fake-biller redirections.
+\item \textbf{Turn on confirmation and holds} for class D, amount above the last paid, payee changes and coaching signals,
+with the confirmation card in the customer's language.
+\end{enumerate}
+Measures to report each month: false-block rate, confirmation rate, holds cancelled by the customer, fraud loss on agent
+payments, and time to resolve a dispute using the signed receipt (the evidence the bank needs under RBI's 2027 burden of
+proof).
 
 \section{Deliverables and declarations}
 {\small

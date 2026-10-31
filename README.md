@@ -130,6 +130,20 @@ What is ours: a pre-registered result on every AgentDojo banking run (28 configu
 the bank or PSP rather than inside the agent (a bank does not choose its customer's agent); the gaps above closed and
 measured; a receipt and dispute report shaped for RBI's 2027 burden of proof.
 
+## How a bank deploys it
+* **Where:** at the bank, PSP or payment-app endpoint that receives the agent's payment request, before the UPI request is
+  formed. Agent-agnostic, so one control covers every agent a customer might use.
+* **Inputs the bank already holds:** the customer's signed messages, beneficiary records and who created them, the
+  verified-merchant list every UPI app stores, Bharat Connect biller data and bill fetch; for human payments, in-call and
+  screen-sharing signals from the app.
+* **Cost:** 424 lines of standard-library Python (gate + receipts), no model, no network call; median 74 µs per decision,
+  99th percentile 0.24 ms on one laptop core.
+* **Fails closed:** a payee nobody on the customer's side wrote is refused. Across all AgentDojo banking runs, the 11
+  legitimate-task payments refused (of 210) were all to wrong accounts the agent itself produced.
+* **Rollout:** shadow mode (log, block nothing; measure false blocks on real traffic) → enforce BLOCK for unsourced payees
+  and registry mismatches → turn on confirmations and holds. Report monthly: false-block rate, confirmation rate, holds
+  cancelled, fraud loss on agent payments, dispute resolution time from the signed receipt.
+
 ## Run it
 Python 3.10+, standard library only, no network, no model.
 ```

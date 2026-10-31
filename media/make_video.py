@@ -78,9 +78,9 @@ SLIDES = [
          "NPCI OC 201-B: agents pay P2M, dispute resolution required  →  provenance fields + signed receipts",
          "RBI Authentication Directions 2025: risk-based checks beyond 2FA  →  provenance is the risk signal",
          "RBI 2026 directions (from Jan 2027): burden of proof on the bank  →  the receipt is the proof",
-         "Banks / PSPs: a drop-in check, about 250 lines, no model, no extra network call"],
+         "Banks / PSPs: a drop-in check, about 420 lines, no model, no network call, under a millisecond"],
          say="It fits rules that already exist: N P C I's circular for agent payments, R B I's risk based authentication, "
-             "and R B I's 2027 burden of proof. For a bank it is a drop in check of about two hundred and fifty lines."),
+             "and R B I's 2027 burden of proof. For a bank it is a drop in check of about four hundred lines that decides in under a millisecond."),
     dict(kind="title", title="github.com/Alkur123/payee-provenance", lines=["Open source · MIT · every number reproducible",
          "Who supplied this payee?  Now a bank can answer."],
          say="It is open source, and every number is reproducible. Who supplied this payee? Now a bank can answer."),
