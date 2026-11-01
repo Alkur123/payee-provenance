@@ -12,7 +12,6 @@ authors:
   - family-names: Kadekoppa
     given-names: Kiran
     affiliation: "IIDA Labs"
-    email: kiran@iidalabs.org
 preferred-citation:
   type: report
   title: "Who Said So? Payee Provenance: the Missing Check in AI-Agent Payments on UPI"

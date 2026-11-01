@@ -12,7 +12,7 @@
 
 **[Report (PDF)](AegisAI_Report.pdf)** · **[Demo video](media/demo.mp4)** · **[Results](#results)** · **[How it works](#how-it-works)** · **[Quickstart](#quickstart)** · **[Pre-registrations](preregistrations/)** · **[Cite](#citation)**
 
-*Team Aegis AI (Jaswanth Alkur, Aegis AI · Kiran Kadekoppa, IIDA Labs) · India Agentic AI Security Hackathon, Technical Track, System Resilience*
+*Team Aegis AI (Jaswanth Alkur, AI safety researcher, Aegis AI · Kiran Kadekoppa, IIDA Labs) · India Agentic AI Security Hackathon, Technical Track, System Resilience*
 
 </div>
 
@@ -469,4 +469,4 @@ registry check, and produces a liability receipt.
 }
 ```
 
-MIT licensed ([LICENSE](LICENSE)). Contact: Jaswanth Alkur (Aegis AI) · Kiran Kadekoppa, IIDA Labs, kiran@iidalabs.org.
+MIT licensed ([LICENSE](LICENSE)). Contact: Jaswanth Alkur, founder and AI safety researcher, Aegis AI.
