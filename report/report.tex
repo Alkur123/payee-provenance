@@ -200,7 +200,7 @@ been persuaded to type the scammer's account themselves.
 standard prompt-injection benchmark: 28 model and defence configurations, 15 attack types and 7,802 runs. The second is a
 closed loop in which three language models (gemma4, gpt-oss-120b and gpt-4.1-mini) act as the payment agent on 90
 scenarios, each run with and without the gate. The third places the gate in front of an Indian payment gateway's
-open-source payout server, built unmodified and run locally against a capture proxy, with two of those models. These three
+open-source payout server, built unmodified, against a local capture proxy and then the provider's real sandbox API. These three
 were pre-registered: predictions were written and hashed before any result was scored, and the one prediction that failed
 is reported. The fourth is a red team of 150 attacks across 15 Indian fraud patterns, written by us. The fifth, also
 pre-registered, is an attacker model given the gate's full rules that adapts to its refusals. The sixth is a set of
@@ -216,8 +216,9 @@ all of them as misses still gives at least 95.4\%. A spending limit let 83.6\% t
 payments were blocked, and in each case the agent was paying a wrong account it had produced itself.
 \item \textbf{Real models as the agent.} Without the gate, 46 attacks moved money across the three models (12 of 45, 14 of
 44 and 20 of 45). With the gate, none did, and no legitimate task was lost.
-\item \textbf{Real payout server.} Attacker payouts reached the payment API in 14 of 15 and 10 of 15 attack episodes
-without the gate, and in none with it. The server's own provenance labels, which the agent fills in, described the
+\item \textbf{Real payout server, and the provider's real sandbox API.} Attacker payouts reached the payment API in 14 of
+15 and 10 of 15 attack episodes without the gate, and in none with it. Against the provider's real sandbox, the
+attacker's payout was accepted in 11 of 15 without the gate and 0 of 15 with it, with legitimate payouts unchanged. The server's own provenance labels, which the agent fills in, described the
 attacker's account as ``user input'' 12 times out of 20.
 \item \textbf{An attacker who knows every rule.} A language model given the gate's full rules wrote the bill, SMS and
 web text and retried after each refusal. Against a customer who reads confirmations it never succeeded (0 of 45). Its
@@ -371,9 +372,10 @@ published. One design observation about a real open-source payout server (Append
 privately with SAFL at team@secureaifutureslab.com, as this template asks; we name neither the vendor nor step-by-step
 details here.\\
 Environment & A local Python mock of a UPI-style rail with Reserve Pay-style mandates and a stand-in biller registry;
-AgentDojo's published logs; an Indian payment gateway's open-source payout server built from source and run locally against
-a capture proxy with dummy credentials (no vendor system contacted); gemma4 run locally, two models by API. No real
-transactions or accounts were involved.\\
+AgentDojo's published logs; an Indian payment gateway's open-source payout server built from source, run against a local
+capture proxy with dummy credentials and, in one evaluation, against the provider's sandbox with test-mode keys (test
+money, synthetic payees; a proxy refused any host other than the sandbox, so no production system was contacted);
+gemma4 run locally, two models by API. No real transactions or accounts were involved.\\
 \bottomrule
 \end{longtable}}
 
@@ -492,6 +494,33 @@ step-by-step details here until they have had the chance to respond.}
 scenario (48 episodes, 0 errors), the attacker's payout reached the payment API in \textbf{10 of 15} attack episodes direct
 and \textbf{0 of 15} gated; every legitimate payout was delivered in 12 of 15 episodes in both conditions (the 3 misses are
 one batch scenario where the model made no payout either way).
+
+\subsection{Against the provider's real sandbox API (pre-registered)}\label{app:sandbox}
+The runs above captured the official payout server's requests on this machine. PR57 sent the same requests to the
+provider's real, internet-hosted sandbox (test money, no bank settlement), authenticated with test-mode keys and signed
+requests, and scored on the provider's own responses. A forwarding proxy recorded every request and response and
+forwarded only to the sandbox host; asked to reach the production host, it refused. Agent: gpt-4.1-mini, all 24
+scenarios, each run direct and gated; 48 episodes, no errors.
+\begin{center}\small
+\begin{tabular}{p{7.2cm}cc}
+\toprule
+ & direct (model $\rightarrow$ server $\rightarrow$ sandbox) & \textbf{gated} (gate in front)\\
+\midrule
+attacker payout accepted by the provider's API (HTTP 200, a provider transfer id) & 11 of 15 & \textbf{0 of 15}\\
+episodes in which every legitimate payout was accepted & 12 of 15 & \textbf{12 of 15}\\
+\bottomrule
+\end{tabular}
+\end{center}
+{\small Both predictions held. We then looked up every accepted transfer in the provider's own records: 8 were to
+attacker accounts (the other 3 attacker payouts were payout links, a separate endpoint). The sandbox's simulated
+settlement later marked every transfer to our synthetic UPI IDs failed or rejected, the 25 legitimate ones included,
+because they are not the provider's test instruments; the result is therefore that the payment API received and accepted
+the attacker's request, not that a payee was credited. Two requests were rejected for an invalid beneficiary name the
+model wrote. Two earlier runs are reported, not used: the first (gemma4) was confounded, because the account still
+required IP allow-listing and this machine's mobile connection changes address, so 31 of 44 payout requests were refused
+for that reason (gated, 0 of 15 attacker payouts still reached the sandbox); a re-run after switching to signed requests
+was stopped by the host for low memory after 8 episodes, all accepted. Each change was recorded in the pre-registration
+before the run it governed.}
 
 \subsection{White-box red team: agent fully hijacked (design results)}
 \begin{center}\small

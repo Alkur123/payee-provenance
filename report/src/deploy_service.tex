@@ -10,7 +10,11 @@ response waits until its receipt is on disk; one disk flush covers all receipts 
 and after each run all 4,000 receipts were on disk and the chain read back from disk verified against its anchored head.
 The decision itself takes a median of 32\,\textmu s; in-process without durable writes the service makes 11,436
 decisions per second, so throughput is set by the disk, not the gate. A single receipt chain is a serialisation point,
-so a bank would run one chain per shard (per customer or per agent), each anchored separately. We wrote the Dockerfile but could not build-test it on the evaluation machine.
+so a bank would run one chain per shard (per customer or per agent), each anchored separately. The container image
+(178\,MB, no third-party packages) passes a ten-point smoke test (\texttt{docker\_smoke.py}): it refuses to start without
+keys, runs as a non-root user, reports healthy to Docker, allows the customer's payee, blocks an SMS payee and refuses
+unsealed state over HTTP, keeps and verifies its receipts across a restart, and refuses to start after its receipt store
+is tampered with.
 
 \paragraph{A field proposal for the Unified Agent Protocol.} \texttt{PAYEE\_PROVENANCE\_FIELDS.md} in the repository
 specifies the fields an agent payment request would carry (provenance class and source, the gate's decision, any

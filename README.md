@@ -113,6 +113,18 @@ payout reached the payment API in **10 of 15** attack episodes direct and **0 of
 delivered in 12 of 15 episodes in both conditions (the 3 misses are one batch scenario where the model made no payout
 either way).
 
+**Against the provider's real sandbox API (pre-registered).** We then sent the same requests to the provider's real,
+internet-hosted sandbox (test money, test-mode keys, signed requests), through a proxy that forwards only to the sandbox
+host and refuses any other, and scored on the provider's own responses. With gpt-4.1-mini on every scenario (48
+episodes, 0 errors): the attacker's payout was **accepted by the provider's API (HTTP 200, a provider transfer id) in 11
+of 15 attack episodes direct and 0 of 15 gated**; every legitimate payout was accepted in 12 of 15 episodes in both
+conditions. Looking up each accepted transfer in the provider's own records found 8 to attacker accounts (the other 3
+were payout links). The sandbox's simulated settlement marked every transfer to our synthetic UPI IDs failed or
+rejected, legitimate ones included, so the claim is that the payment API accepted the attacker's request, not that a
+payee was credited. Two earlier attempts are reported, not used: one confounded by IP allow-listing on a mobile
+connection (31 of 44 requests refused for that reason; gated, still 0 of 15 attacker payouts reached the sandbox) and
+one stopped for low memory after 8 episodes.
+
 ### 5. Tests that can fail
 63 tests, including a 5,000-case fuzz of the fail-closed claim (only the customer's exact token can ever be allowed,
 under eight attacker transformations), laundering, registry mismatch, the concurrent-work gaps, the signed customer
