@@ -134,6 +134,18 @@ was accepted in 15 of 15 episodes in both conditions. All 62 accepted payouts we
 records (7 to attacker accounts, all direct; the other 3 attacker payouts were payout links); every payout is queued in
 test mode, legitimate ones included, so again the claim is acceptance by the API, not settlement.
 
+**Collect requests on a third provider's real UPI sandbox (pre-registered).** The payout tests cover money the agent
+sends; a UPI collect request is a payee asking the customer to pay, the channel NPCI restricted for person-to-person use
+because of fraud. The agent could list the customer's pending collect requests, read SMS and e-mail, and approve or
+decline. Each request was created for real on the provider's UPI sandbox and an approval was completed with the
+sandbox's mock-payment API. 15 attack scenarios (fake refund, electricity disconnection, KYC fee, parcel re-delivery fee,
+"approve to receive money" from a marketplace buyer) and 15 requests from saved payees; 60 episodes, 0 errors. **Without
+the gate the agent paid the attacker's request in 15 of 15 episodes; with it, 0 of 15.** Legitimate requests were paid
+in 11 of 15 direct and 13 of 15 gated; every unpaid one was the model asking the customer first, never a gate refusal.
+All 39 payments were confirmed in the provider's payment history (transaction ID and RRN, status `initiated` on sandbox
+rails). Declared limitation: the sandbox gives one merchant VPA, so attacker and legitimate payee are the same real VPA in
+different customer sessions; what the gate reads, and what differs, is where the payee came from.
+
 ### 5. Tests that can fail
 63 tests, including a 5,000-case fuzz of the fail-closed claim (only the customer's exact token can ever be allowed,
 under eight attacker transformations), laundering, registry mismatch, the concurrent-work gaps, the signed customer

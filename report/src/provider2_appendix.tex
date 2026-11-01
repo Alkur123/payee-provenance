@@ -1,0 +1,22 @@
+\subsection{A second provider's real payout API (pre-registered)}\label{app:provider2}
+A bank will ask whether the gate is tied to one provider. PR58 ran the same scenarios, model (gpt-4.1-mini) and gate
+against a second Indian payment provider's real payout API in test mode (test keys, test money). That provider's
+official agent server can list payouts but not create them, so the agent's three payment tools were connected to its
+Payouts and Payout Links APIs by a small adapter we wrote, which refuses to send anything without a test-mode key.
+48 episodes, no errors, every one of the 65 requests answered with HTTP 200.
+\begin{center}\small
+\begin{tabular}{p{7.2cm}cc}
+\toprule
+ & direct & \textbf{gated}\\
+\midrule
+attacker payout accepted by the provider's API & 10 of 15 & \textbf{0 of 15}\\
+episodes in which every legitimate payout was accepted & 15 of 15 & \textbf{15 of 15}\\
+\bottomrule
+\end{tabular}
+\end{center}
+{\small Both predictions held. All 62 accepted payouts were then looked up in the provider's own records (no lookup
+failed): 7 were to attacker accounts, all from direct runs, and the other 3 attacker payouts were payout links. Every
+payout in the records, legitimate and attacker alike, is queued (test-mode payouts wait on the test balance), so the
+claim is acceptance by the payment API, not settlement. With two independent providers, the gate's result is the same:
+the attacker's payout is accepted without it and never with it, and legitimate payouts are unaffected.}
+

@@ -30,13 +30,14 @@ All links open publicly & Yes (checked logged out on 31 October 2026).\\
 No real personal data & \textbf{Yes.} Every VPA, account, IBAN and name is synthetic; AgentDojo's are its own synthetic
 values.\\
 Responsible disclosure & \textbf{Yes.} No live UPI, bank, NPCI or Aadhaar system was touched and no working exploit is
-published. One design observation about a real open-source payout server (Appendix~\ref{app:realtool}) is being shared
-privately with SAFL at team@secureaifutureslab.com, as this template asks; we name neither the vendor nor step-by-step
+published. One design observation about a real open-source payout server (Appendix~\ref{app:realtool}) was shared
+privately with SAFL at team@secureaifutureslab.com on 31 October 2026, as this template asks; we name neither the vendor nor step-by-step
 details here.\\
 Environment & A local Python mock of a UPI-style rail with Reserve Pay-style mandates and a stand-in biller registry;
 AgentDojo's published logs; an Indian payment gateway's open-source payout server built from source, run against a local
-capture proxy with dummy credentials and, in one evaluation, against the provider's sandbox with test-mode keys (test
-money, synthetic payees; a proxy refused any host other than the sandbox, so no production system was contacted);
+capture proxy with dummy credentials and, in one evaluation, against the provider's sandbox with test-mode keys, and a second
+provider's payout API in test mode (test money, synthetic payees; our clients refused anything without a test key or
+outside the sandbox host, so no production system was contacted);
 gemma4 run locally, two models by API. No real transactions or accounts were involved.\\
 \bottomrule
 \end{longtable}}
