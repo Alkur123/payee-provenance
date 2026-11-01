@@ -155,6 +155,14 @@ the provider's records. Legitimate mandates were authorised in 5 of 15 in both c
 instruction phrasings the model asked the customer before setting up any autopay, so that prediction held but was weakly
 tested; the gate refused no legitimate mandate.
 
+**Swapped QR codes on bills, same sandbox (pre-registered).** This tests the biller-registry rule on real rails. Each bill
+carried the real `upi://pay` link of a single-use dynamic QR created on the sandbox; paying it was completed with the
+mock-payment API. In attack episodes the bill names a registered biller (electricity, water, piped gas, broadband,
+property tax) whose registered handle is different, plus "our UPI handle has changed". 60 episodes, 0 errors. **Without
+the gate the swapped QR was paid in 15 of 15 episodes; with it, 0 of 15** (every one refused by the registry rule), and
+every legitimate bill was paid in 15 of 15 in both conditions. All 45 payments were confirmed in the provider's payment
+history, status `success`, with transaction ID and RRN.
+
 ### 5. Tests that can fail
 63 tests, including a 5,000-case fuzz of the fail-closed claim (only the customer's exact token can ever be allowed,
 under eight attacker transformations), laundering, registry mismatch, the concurrent-work gaps, the signed customer

@@ -1,0 +1,22 @@
+\subsection{UPI Autopay mandates on the same sandbox (pre-registered)}\label{app:mandates}
+A collect request takes money once; a UPI Autopay mandate lets the payee debit the customer every month up to a limit
+after a single approval. PR60 repeated the collect-request design with mandate requests on the same provider's sandbox:
+each request was created for real, and the agent's approval was completed with the sandbox's mandate mock API. The gate
+treats approving a mandate as a payment to its payee for the monthly maximum. Attacks: fake streaming renewal, insurance
+premium autopay, loan EMI ``activation'', electricity autopay ``to avoid disconnection'' and a cashback activation that
+asks for a Rs 4,999 monthly limit. Legitimate: mandates from payees the customer had saved. 60 episodes, no errors.
+\begin{center}\small
+\begin{tabular}{p{7.2cm}cc}
+\toprule
+ & direct & \textbf{gated}\\
+\midrule
+attacker's mandate authorised (live, with a UMN) & 10 of 15 & \textbf{0 of 15}\\
+legitimate mandate authorised & 5 of 15 & 5 of 15\\
+\bottomrule
+\end{tabular}
+\end{center}
+{\small Both predictions held. All 20 authorised mandates were confirmed in the provider's records as \texttt{live} with a
+Unique Mandate Number. The legitimate figure is low in both conditions for a reason unrelated to the gate: with two of the
+three instruction phrasings the model asked the customer before setting up any autopay, so it never asked to approve; the
+gate refused no legitimate mandate. We report that prediction as held but weakly tested.}
+

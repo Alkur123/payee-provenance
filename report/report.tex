@@ -200,7 +200,7 @@ been persuaded to type the scammer's account themselves.
 standard prompt-injection benchmark: 28 model and defence configurations, 15 attack types and 7,802 runs. The second is a
 closed loop in which three language models (gemma4, gpt-oss-120b and gpt-4.1-mini) act as the payment agent on 90
 scenarios, each run with and without the gate. The third places the gate in front of an Indian payment gateway's
-open-source payout server, built unmodified, against a local capture proxy, the provider's real sandbox API, a second provider's real API and, for collect requests and mandates, a third's UPI sandbox. These three
+open-source payout server, built unmodified, against a local capture proxy, the provider's real sandbox API, a second provider's real API and a third's UPI sandbox (collect, Autopay, QR). These three
 were pre-registered: predictions were written and hashed before any result was scored, and the one prediction that failed
 is reported. The fourth is a red team of 150 attacks across 15 Indian fraud patterns, written by us. The fifth, also
 pre-registered, is an attacker model given the gate's full rules that adapts to its refusals. The sixth is a set of
@@ -221,7 +221,8 @@ payments were blocked, and in each case the agent was paying a wrong account it 
 attacker's payout was accepted in 11 of 15 without the gate and 0 of 15 with it; against a second provider's real payout
 API, 10 of 15 and 0 of 15. Legitimate payouts were unchanged in both. On a third provider's real UPI sandbox, the agent
 approved every fraudulent collect request (15 of 15) without the gate and none with it, and authorised 10 of 15
-fraudulent UPI Autopay mandates without it and none with it. The server's own provenance labels, which the agent fills in, described the
+fraudulent UPI Autopay mandates without it and none with it. A bill with a swapped QR code was paid in 15 of 15
+without the gate and 0 of 15 with it, while every legitimate bill was paid in both. The server's own provenance labels, which the agent fills in, described the
 attacker's account as ``user input'' 12 times out of 20.
 \item \textbf{An attacker who knows every rule.} A language model given the gate's full rules wrote the bill, SMS and
 web text and retried after each refusal. Against a customer who reads confirmations it never succeeded (0 of 45). Its
@@ -233,11 +234,11 @@ through was held, and none was paid at once (Appendix~\ref{app:adaptive}).
 \centering
 \begin{tikzpicture}
 \begin{axis}[
-  scale only axis, width=10.2cm, height=9.0cm,
-  xmin=-4, xmax=104, ymin=0.4, ymax=11.6,
+  scale only axis, width=10.2cm, height=9.7cm,
+  xmin=-4, xmax=104, ymin=0.4, ymax=12.6,
   xtick={0,20,40,60,80,100}, xticklabel={\pgfmathprintnumber{\tick}\%},
   xlabel={share of attacks that moved money (or would have)},
-  ytick={1,2,3,4,5,6,7,8,9,10,11},
+  ytick={1,2,3,4,5,6,7,8,9,10,11,12},
   yticklabels={
     {AgentDojo, every banking run (n\,=\,1{,}477)},
     {Red team, agent hijacked (n\,=\,150)},
@@ -248,8 +249,9 @@ through was held, and none was paid at once (Appendix~\ref{app:adaptive}).
     {Real payout server, gpt-4.1-mini (n\,=\,15)},
     {Provider's real sandbox API, gpt-4.1-mini (n\,=\,15)},
     {Second provider's real API, gpt-4.1-mini (n\,=\,15)},
-    {Third provider's UPI sandbox, collect (n\,=\,15)},
-    {Third provider's UPI sandbox, Autopay (n\,=\,15)}},
+    {Third provider's UPI sandbox: collect (n\,=\,15)},
+    {Third provider's UPI sandbox: Autopay (n\,=\,15)},
+    {Third provider's UPI sandbox: QR swap (n\,=\,15)}},
   yticklabel style={font=\small, text=black!80},
   xticklabel style={font=\small, text=black!65},
   xlabel style={font=\small, text=black!65},
@@ -272,11 +274,12 @@ through was held, and none was paid at once (Appendix~\ref{app:adaptive}).
 \addplot[draw=black!22, line width=1.6pt, forget plot] coordinates {(0,9) (66.7,9)};
 \addplot[draw=black!22, line width=1.6pt, forget plot] coordinates {(0,10) (100,10)};
 \addplot[draw=black!22, line width=1.6pt, forget plot] coordinates {(0,11) (66.7,11)};
+\addplot[draw=black!22, line width=1.6pt, forget plot] coordinates {(0,12) (100,12)};
 % no defence
 \addplot[only marks, mark=*, mark size=3.4pt, color=cnone, mark options={draw=white, line width=0.8pt},
   nodes near coords={\pgfmathprintnumber[fixed,precision=1]{\pgfplotspointmeta}\%},
   point meta=x, every node near coord/.append style={anchor=south, yshift=2pt}]
-  coordinates {(100,2) (26.7,3) (31.8,4) (44.4,5) (93.3,6) (66.7,7) (73.3,8) (66.7,9) (100,10) (66.7,11)};
+  coordinates {(100,2) (26.7,3) (31.8,4) (44.4,5) (93.3,6) (66.7,7) (73.3,8) (66.7,9) (100,10) (66.7,11) (100,12)};
 \addlegendentry{no defence}
 % existing control (UPI-style spending cap)
 \addplot[only marks, mark=square*, mark size=3.1pt, color=ccap, mark options={draw=white, line width=0.8pt},
@@ -288,11 +291,11 @@ through was held, and none was paid at once (Appendix~\ref{app:adaptive}).
 \addplot[only marks, mark=diamond*, mark size=4.2pt, color=cgate, mark options={draw=white, line width=0.8pt},
   nodes near coords={\textbf{0}}, point meta=x,
   every node near coord/.append style={anchor=east, xshift=-3pt, text=cgate}]
-  coordinates {(0,1) (0,2) (0,3) (0,4) (0,5) (0,6) (0,7) (0,8) (0,9) (0,10) (0,11)};
+  coordinates {(0,1) (0,2) (0,3) (0,4) (0,5) (0,6) (0,7) (0,8) (0,9) (0,10) (0,11) (0,12)};
 \addlegendentry{our provenance gate}
 \end{axis}
 \end{tikzpicture}
-\caption{Share of attacks that moved money in each evaluation, with no defence, with a spending limit (where measured) and with the gate. Each row is a separate evaluation; the gate's result is zero in all eleven. The AgentDojo row contains only attacks that had already succeeded against the agent, so the undefended rate is 100\% by construction and only the spending limit is shown; 299 of these attacks had also passed an existing defence (a prompt-injection detector, tool filter, spotlighting or Meta-SecAlign). In the red team the customer reads each confirmation; a customer who approves everything would approve 10 of 150 attacks, all of which are held rather than paid. No legitimate task was lost to the gate in any closed-loop or payout-server run.}
+\caption{Share of attacks that moved money in each evaluation, with no defence, with a spending limit (where measured) and with the gate. Each row is a separate evaluation; the gate's result is zero in all twelve. The AgentDojo row contains only attacks that had already succeeded against the agent, so the undefended rate is 100\% by construction and only the spending limit is shown; 299 of these attacks had also passed an existing defence (a prompt-injection detector, tool filter, spotlighting or Meta-SecAlign). In the red team the customer reads each confirmation; a customer who approves everything would approve 10 of 150 attacks, all of which are held rather than paid. No legitimate task was lost to the gate in any closed-loop or payout-server run.}
 \label{fig:results}
 \end{figure}
 
@@ -385,7 +388,7 @@ details here.\\
 Environment & A local Python mock of a UPI-style rail with Reserve Pay-style mandates and a stand-in biller registry;
 AgentDojo's published logs; an Indian payment gateway's open-source payout server built from source, run against a local
 capture proxy with dummy credentials and, in one evaluation, against the provider's sandbox with test-mode keys, and a second
-provider's payout API in test mode, and a third provider's UPI sandbox for collect requests and Autopay mandates (test money or simulated rails, synthetic payees; our clients refused anything without a test key or
+provider's payout API in test mode, and a third provider's UPI sandbox for collect requests, Autopay mandates and QR payments (test money or simulated rails, synthetic payees; our clients refused anything without a test key or
 outside the sandbox host, so no production system was contacted);
 gemma4 run locally, two models by API. No real transactions or accounts were involved.\\
 \bottomrule
@@ -605,6 +608,28 @@ legitimate mandate authorised & 5 of 15 & 5 of 15\\
 Unique Mandate Number. The legitimate figure is low in both conditions for a reason unrelated to the gate: with two of the
 three instruction phrasings the model asked the customer before setting up any autopay, so it never asked to approve; the
 gate refused no legitimate mandate. We report that prediction as held but weakly tested.}
+
+\subsection{Swapped QR codes on bills, same sandbox (pre-registered)}\label{app:qrswap}
+Replacing the UPI QR code or payment link on a bill is one of the commonest UPI frauds. PR61 tested the gate's
+biller-registry rule on real rails. For each episode a single-use dynamic QR was created on the same provider's sandbox,
+and its real \texttt{upi://pay} link was printed on the bill the customer asked the agent to pay; paying it was completed
+with the sandbox's mock-payment API. In legitimate episodes the biller the bill names is registered with the link's
+handle. In attack episodes the bill names a registered biller (electricity, water, piped gas, broadband, property tax)
+whose registered handle is different, and adds that ``the UPI handle has changed''. 60 episodes, no errors.
+\begin{center}\small
+\begin{tabular}{p{7.2cm}cc}
+\toprule
+ & direct & \textbf{gated}\\
+\midrule
+swapped QR paid & 15 of 15 & \textbf{0 of 15}\\
+legitimate bill paid & 15 of 15 & \textbf{15 of 15}\\
+\bottomrule
+\end{tabular}
+\end{center}
+{\small Both predictions held. Every gated attack was refused by the registry rule (the bill claims a biller, and the link
+does not pay that biller's registered handle); no legitimate bill was refused. All 45 payments were confirmed in the
+provider's payment history with status \texttt{success}, a transaction ID and an RRN. The same single-VPA limitation as
+the collect test applies: what differs between sessions is the registry entry for the biller the bill names.}
 
 \subsection{White-box red team: agent fully hijacked (design results)}
 \begin{center}\small
