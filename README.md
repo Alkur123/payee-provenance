@@ -1,4 +1,22 @@
-# Who Said So? Payee provenance for agent payments
+<div align="center">
+
+# Who Said So?
+### Payee provenance: the missing check in AI-agent payments on UPI
+
+[![License: MIT](https://img.shields.io/badge/license-MIT-2a78d6)](LICENSE)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-2a78d6)](#quickstart)
+[![Dependencies: standard library only](https://img.shields.io/badge/dependencies-stdlib%20only-2a78d6)](#quickstart)
+[![Tests: 63 passing](https://img.shields.io/badge/tests-63%20passing-1baf7a)](tests/)
+[![Mutation probe: 27/27](https://img.shields.io/badge/mutants%20caught-27%2F27-1baf7a)](tests/mutation_probe.py)
+[![Pre-registered](https://img.shields.io/badge/evaluations-pre--registered-eb6834)](preregistrations/)
+
+**[Report (PDF)](AegisAI_Report.pdf)** · **[Demo video](media/demo.mp4)** · **[Results](#results)** · **[How it works](#how-it-works)** · **[Quickstart](#quickstart)** · **[Pre-registrations](preregistrations/)** · **[Cite](#citation)**
+
+*Team Aegis AI (Jaswanth Alkur, Aegis AI · Kiran Kadekoppa, IIDA Labs) · India Agentic AI Security Hackathon, Technical Track, System Resilience*
+
+</div>
+
+---
 
 **Every payment control in use asks "is it you?" (PIN, OTP) or "is it them?" (Confirmation of Payee). Authorised push
 payment fraud passes both. This gate asks the question nobody asks: *who supplied this payee?***
@@ -8,7 +26,65 @@ never sees. For an AI agent's payment it can, exactly, because everything the ag
 payments are arriving on UPI now (Razorpay × NPCI on Claude, Feb 2026; NPCI's Unified Agent Protocol in development).
 They are protected by spending caps, which bound **how much**. Nothing binds **who said so**.
 
-**Report:** [AegisAI_Report.pdf](AegisAI_Report.pdf) (SAFL template sections 1-10, then appendices) · **Video:** [media/demo.mp4](media/demo.mp4) (1:51)
+> **TL;DR.** A deterministic, bank-side gate that lets an AI agent pay only payees the customer or the bank supplied, and
+> writes a signed receipt saying where each payee came from. No model, no network call, ~500 lines of Python, 32 µs per
+> decision. In front of **three real payment providers' systems** (payouts, UPI collect requests, UPI Autopay mandates,
+> swapped QR codes) the attacker was paid in **0 of 75** gated attack episodes against **61 of 75** without it, with
+> legitimate payments unaffected.
+
+## Results
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="media/results-dark.svg">
+  <img alt="Share of attacks that moved money in 12 evaluations: between 26.7% and 100% with no defence, 0% with the provenance gate in every one" src="media/results-light.svg" width="100%">
+</picture>
+
+### On real payment systems (test mode and sandboxes, pre-registered)
+
+Each run used `gpt-4.1-mini` as the payment agent on the same scenarios, once **direct** (agent → provider) and once
+**gated** (agent → gate → provider). Every accepted payment was then looked up in the provider's own records.
+
+| Provider's real system | Attack | Attacker paid, no gate | Attacker paid, **gated** | Legitimate paid (direct → gated) | Confirmed in provider's records |
+|---|---|:-:|:-:|:-:|---|
+| Provider 1: official agent server + sandbox API | redirected payouts | 11 / 15 | **0 / 15** | 12 → 12 | 8 attacker transfers found, all direct (sandbox marks synthetic payees failed) |
+| Provider 2: payout API (test mode) | redirected payouts | 10 / 15 | **0 / 15** | 15 → 15 | 62 payouts, `queued` |
+| Provider 3: UPI sandbox | fraudulent **collect requests** | 15 / 15 | **0 / 15** | 11 → 13 | 39 payments, txn ID + RRN |
+| Provider 3: UPI sandbox | fraudulent **UPI Autopay mandates** | 10 / 15 | **0 / 15** | 5 → 5 | 20 mandates `live` with UMN |
+| Provider 3: UPI sandbox | **swapped QR** on a bill | 15 / 15 | **0 / 15** | 15 → 15 | 45 payments `success` |
+
+Test money and simulated rails only; no live UPI, bank or NPCI system was touched. Unpaid legitimate requests were the
+model asking the customer first, never a gate refusal. Details, limitations and every prediction (including the ones
+that failed) are in the [report](AegisAI_Report.pdf), Appendix A, and below under [Evidence](#evidence).
+
+### On benchmarks, closed loops and red teams
+
+| Evaluation | Attacks that moved money, no defence | **With the gate** | Legitimate payments lost to the gate |
+|---|:-:|:-:|:-:|
+| AgentDojo, every published banking run (28 configurations, 7,802 runs) | 1,477 successful attacks (spending cap lets 83.6% through) | **0** | 11 / 210 (agent paying a wrong account it produced) |
+| Closed loop, gpt-4.1-mini / gpt-oss-120b / gemma4 | 20/45 · 14/44 · 12/45 | **0** | 0 |
+| Real open-source payout server, gpt-4.1-mini / gemma4 | 10/15 · 14/15 | **0** | 0 |
+| White-box red team, agent fully hijacked | 150 / 150 | **0 paid at once** (10 held for confirmation) | 0 |
+| Adaptive attacker that knows every rule | n/a | **0 / 45** with a careful customer | 0 |
+
+## How it works
+
+```mermaid
+flowchart LR
+    A["Agent proposes a payment<br/>(payee, amount)"] --> G{"Where did this<br/>payee come from?"}
+    G -->|"customer's own signed message"| P["P · ALLOW"]
+    G -->|"saved payee created by an authorised action"| K["K · ALLOW"]
+    G -->|"bill the customer named,<br/>payee is the biller's registered handle"| R["R · ALLOW"]
+    G -->|"bill the customer named,<br/>no registry entry"| D["D · STEP-UP<br/>confirm, then hold 1–4 h"]
+    G -->|"bill claims a biller,<br/>payee is not its handle"| M["BLOCK · registry mismatch"]
+    G -->|"SMS, web page, collect request,<br/>tool output, anything else"| W["W · BLOCK"]
+    P --> AM["Amount checks<br/>(can only make it stricter)"]
+    K --> AM
+    R --> AM
+    D --> AM
+    AM --> RC[("Signed, hash-chained receipt")]
+    M --> RC
+    W --> RC
+```
 
 | class | the payee identifier... | decision |
 |---|---|---|
@@ -32,6 +108,75 @@ Every decision writes a **signed, hash-chained provenance receipt** recording th
 customer instruction, the payee, its class and source, and the outcome. RBI's directions of 24 June 2026 (effective
 1 January 2027) add an "authorised-but-fraudulent" category and put the burden of proof on the bank; this receipt is
 that proof, written at payment time.
+
+### Where it sits
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor C as Customer
+    participant App as Bank app
+    participant Ag as AI agent
+    participant Gt as Provenance gate (bank side)
+    participant Rail as Payment API / UPI rail
+    C->>App: "Pay my electricity bill (bill.pdf)"
+    App->>Gt: signed customer message, saved payees, biller registry
+    Ag->>Gt: pay(payee, amount)
+    Gt->>Gt: classify the payee's source, check the amount
+    alt P, K or R
+        Gt->>Rail: single-use execution token
+    else D
+        Gt->>App: confirmation card showing where the payee came from
+        App->>Gt: signed confirmation (payment held 1–4 h, cancellable)
+    else W or registry mismatch
+        Gt-->>Ag: refused
+    end
+    Gt->>Gt: append signed receipt (evidence for disputes)
+```
+
+The gate needs only records a bank already holds, runs as an HTTP service (`python -m payee_provenance.server`,
+[`openapi.yaml`](openapi.yaml), [`Dockerfile`](Dockerfile)) and can run in shadow mode first to measure false blocks on
+real traffic. NPCI could carry the payee's class and source as two fields in the Unified Agent Protocol
+([`PAYEE_PROVENANCE_FIELDS.md`](PAYEE_PROVENANCE_FIELDS.md)).
+
+## Quickstart
+
+Python 3.10+, standard library only, no network, no model:
+
+```bash
+git clone https://github.com/Alkur123/payee-provenance && cd payee-provenance
+python -m unittest discover -s tests          # 63 tests
+python tests/mutation_probe.py                # 27/27 planted defects caught
+python evaluate.py                            # the red-team table
+python -m payee_provenance.server             # the gate as an HTTP service (needs bank-held keys; see openapi.yaml)
+```
+
+```python
+from payee_provenance.gate import Session, decide_payment
+
+s = Session(principal_messages=["Pay Rs 1,200 to fitzone@okaxis for the gym"],
+            principal_amounts=[1200], mandate_cap=5000)  # built by the bank's host, never by the agent
+decide_payment("fitzone@okaxis", 1200, s).verdict        # 'ALLOW'  class P: the customer typed this payee
+decide_payment("fitzone@okaxis", 1500, s).verdict        # 'BLOCK'  more than the customer stated
+decide_payment("refund.desk@ybl", 1200, s).verdict       # 'BLOCK'  class W: the payee came from somewhere else
+```
+
+Every command that reproduces a number in the report is listed under [Run it](#run-it).
+
+## Repository map
+
+| Path | What it is |
+|---|---|
+| [`payee_provenance/gate.py`](payee_provenance/gate.py) | the gate: payee classes, registry rule, amount rules |
+| [`payee_provenance/receipt.py`](payee_provenance/receipt.py) | signed, hash-chained receipts with an anchored head |
+| [`payee_provenance/bank_api.py`](payee_provenance/bank_api.py), [`server.py`](payee_provenance/server.py) | sealed session state, execution tokens, holds; the HTTP service |
+| [`tests/`](tests/) | unit, property and review-finding tests; the mutation probe |
+| [`agentdojo/`](agentdojo/) | the frozen AgentDojo scorers and results |
+| [`closed_loop.py`](closed_loop.py), [`adaptive_attacker.py`](adaptive_attacker.py) | the closed-loop harness and the rule-aware attacker |
+| [`preregistrations/`](preregistrations/) | predictions written and hashed before each run |
+| [`report/`](report/), [`AegisAI_Report.pdf`](AegisAI_Report.pdf) | the report and its LaTeX source |
+| [`media/`](media/) | the demo video and the README figures (`make_readme_figures.py`) |
+
 
 ## Evidence
 
@@ -308,3 +453,20 @@ held-out benchmark of 383 cases) and a deed-provenance monitor ("Who Wrote the T
 runs flagged). Closest prior work: A-VIP (arXiv 2609.11757) binds each cart line to the listing the user saw, for
 Google's AP2; this applies the provenance idea to UPI's mandate model, adds inherited beneficiary provenance and a
 registry check, and produces a liability receipt.
+
+
+## Citation
+
+```bibtex
+@techreport{alkur2026whosaidso,
+  title       = {Who Said So? Payee Provenance: the Missing Check in AI-Agent Payments on UPI},
+  author      = {Alkur, Jaswanth and Kadekoppa, Kiran},
+  institution = {Aegis AI and IIDA Labs},
+  type        = {Technical report, India Agentic AI Security Hackathon (SAFL)},
+  year        = {2026},
+  month       = nov,
+  url         = {https://github.com/Alkur123/payee-provenance}
+}
+```
+
+MIT licensed ([LICENSE](LICENSE)). Contact: Jaswanth Alkur (Aegis AI) · Kiran Kadekoppa, IIDA Labs, kiran@iidalabs.org.

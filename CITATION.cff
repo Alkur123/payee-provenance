@@ -1,0 +1,29 @@
+cff-version: 1.2.0
+message: "If you use this work, please cite the technical report."
+title: "Who Said So? Payee Provenance: the Missing Check in AI-Agent Payments on UPI"
+type: software
+license: MIT
+repository-code: "https://github.com/Alkur123/payee-provenance"
+date-released: 2026-11-01
+authors:
+  - family-names: Alkur
+    given-names: Jaswanth
+    affiliation: "Aegis AI"
+  - family-names: Kadekoppa
+    given-names: Kiran
+    affiliation: "IIDA Labs"
+    email: kiran@iidalabs.org
+preferred-citation:
+  type: report
+  title: "Who Said So? Payee Provenance: the Missing Check in AI-Agent Payments on UPI"
+  authors:
+    - family-names: Alkur
+      given-names: Jaswanth
+    - family-names: Kadekoppa
+      given-names: Kiran
+  institution:
+    name: "Aegis AI and IIDA Labs"
+  year: 2026
+  month: 11
+  notes: "Technical report, India Agentic AI Security Hackathon (SAFL)"
+  url: "https://github.com/Alkur123/payee-provenance"

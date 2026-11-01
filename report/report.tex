@@ -1,6 +1,8 @@
 \documentclass[10pt,a4paper]{article}
 \usepackage[margin=1.5cm]{geometry}
 \usepackage[T1]{fontenc}
+\input{glyphtounicode}
+\pdfgentounicode=1
 \usepackage{lmodern}
 \usepackage{microtype}
 \usepackage{booktabs}
@@ -27,8 +29,8 @@
 
 \title{\textbf{Who Said So?}\\[2pt]\Large Payee Provenance: the Missing Check in AI-Agent Payments on UPI\\[4pt]
 \normalsize India Agentic AI Security Hackathon --- Technical Track --- Challenge area: System Resilience}
-\author{Team \teamname{} \quad Jaswanth Alkur (Aegis AI) \quad Kiran Kadekoppa (HUEX Labs)}
-\date{31 October 2026}
+\author{Team \teamname{} \quad Jaswanth Alkur (Aegis AI) \quad Kiran Kadekoppa (IIDA Labs)}
+\date{1 November 2026}
 
 \begin{document}
 \maketitle
@@ -51,8 +53,9 @@ Team size & 2\\
  & Member 1 (primary contact) & Member 2\\
 \midrule
 Full name & Jaswanth Alkur & Kiran Kadekoppa\\
-Institution / organisation & Aegis AI & HUEX Labs\\
-Background & Founder; engineer and AI-safety researcher & Engineer (CTO and co-founder, HUEX Labs)\\
+Institution / organisation & Aegis AI & IIDA Labs\\
+Background & Founder; engineer and AI-safety researcher & Independent AI researcher, IIDA Labs\\
+E-mail & given in the submission form & kiran@iidalabs.org\\
 \bottomrule
 \end{tabularx}}
 
@@ -107,7 +110,7 @@ earlier; \textbf{R}, the registered handle of a biller; \textbf{D}, a document t
 Later rules can only make a decision stricter. A bill that claims to come from a registered biller must carry that biller's
 handle. The amount must match what the customer stated or the biller's bill fetch, and paying a saved payee more than last
 time, or soon after its details changed, requires confirmation. Each decision is written to a hash-chained, HMAC-signed
-receipt. The gate uses no model and makes no network call; it is about 500 lines of Python and takes a median of 32\,\textmu s
+receipt. The gate uses no model and makes no network call; it is about 500 lines of Python and takes a median of 32\,$\mu$s
 per decision. We considered and rejected three alternatives. A second language model
 judging each payment can be injected through the same text. A known-payee allowlist blocks every first payment to a new
 payee (41.7\% of legitimate AgentDojo payments) and is bypassed by adding the payee first. A tighter spending limit still
@@ -181,7 +184,7 @@ admits small redirected payments; 80.7\% of real attacks would fit under one.
    hash-chained and HMAC-signed $\rightarrow$ dispute report}};
 \draw[line, dashed, draw=black!40] (block.south) -- (block.south |- rcpt.north);
 \end{tikzpicture}
-\caption{How the gate decides a single payment. The payee is classified by its source, using only records the bank holds, and later checks can only make the decision stricter. Injected text can therefore push a payee down to class W but cannot raise it to P, K or R. The gate uses no model and makes no network call (median 32\,\textmu s per decision).}
+\caption{How the gate decides a single payment. The payee is classified by its source, using only records the bank holds, and later checks can only make the decision stricter. Injected text can therefore push a payee down to class W but cannot raise it to P, K or R. The gate uses no model and makes no network call (median 32\,$\mu$s per decision).}
 \label{fig:flow}
 \end{figure}
 
@@ -362,8 +365,9 @@ Other artifacts & The 15-family Indian fraud scenario set, the AgentDojo scorer,
 pre-registrations, all in the repository (MIT).\\
 Done during the hackathon? & Built on earlier work by the same author. \emph{Existed before:} an authorization-provenance
 witness and a deed-provenance monitor (September 2026) and our AgentDojo scoring harness. \emph{Added in the window (31
-October 2026):} the payee-provenance gate and its rules, signed receipts and dispute report, the Indian red team, the
-coached-payment check and holds, six pre-registered evaluations, the tests, the video and this report.\\
+October to 1 November 2026):} the payee-provenance gate and its rules, signed receipts and dispute report, the Indian red
+team, the coached-payment check and holds, the pre-registered evaluations including the five on real payment providers'
+systems, the tests, the video and this report.\\
 AI tools used & Claude Opus 5.5 (Anthropic), through Claude Code: web research, writing the code, running the evaluations
 and drafting this report under the author's direction; the author chose the problem, approved each step and is responsible
 for every claim. Agents under test, never part of the gate: gemma4 (Google, open weights, local through Ollama),
@@ -778,7 +782,7 @@ payment check adds two device signals a banking app can read (a call with an unk
 access) and the account's own 24-hour outflow.
 
 \textbf{What it costs.} about 500 lines of standard-library Python (gate and receipts), no model and no network call. On one
-laptop core: median 32\,\textmu s per decision, 99th percentile 0.13\,ms (6,000 decisions over the scenario set). It adds
+laptop core: median 32\,$\mu$s per decision, 99th percentile 0.13\,ms (6,000 decisions over the scenario set). It adds
 no measurable latency to a UPI payment.
 
 \textbf{How it fails.} Closed. A payee that appears nowhere the customer or the bank wrote is class W and is refused; no
@@ -810,7 +814,7 @@ convention. Six tests drive it over real HTTP. On one laptop process, 16 concurr
 received 517 to 553 decisions per second across three runs (median 27--29\,ms, 99th percentile 44--47\,ms). Every
 response waits until its receipt is on disk; one disk flush covers all receipts waiting at that moment (group commit),
 and after each run all 4,000 receipts were on disk and the chain read back from disk verified against its anchored head.
-The decision itself takes a median of 32\,\textmu s; in-process without durable writes the service makes 11,436
+The decision itself takes a median of 32\,$\mu$s; in-process without durable writes the service makes 11,436
 decisions per second, so throughput is set by the disk, not the gate. A single receipt chain is a serialisation point,
 so a bank would run one chain per shard (per customer or per agent), each anchored separately. The container image
 (178\,MB, no third-party packages) passes a ten-point smoke test (\texttt{docker\_smoke.py}): it refuses to start without

@@ -63,7 +63,7 @@ been persuaded to type the scammer's account themselves.
 standard prompt-injection benchmark: 28 model and defence configurations, 15 attack types and 7,802 runs. The second is a
 closed loop in which three language models (gemma4, gpt-oss-120b and gpt-4.1-mini) act as the payment agent on 90
 scenarios, each run with and without the gate. The third places the gate in front of an Indian payment gateway's
-open-source payout server, built unmodified, against a local capture proxy, the provider's real sandbox API, a second provider's real API and, for collect requests and mandates, a third's UPI sandbox. These three
+open-source payout server, built unmodified, against a local capture proxy, the provider's real sandbox API, a second provider's real API and a third's UPI sandbox (collect, Autopay, QR). These three
 were pre-registered: predictions were written and hashed before any result was scored, and the one prediction that failed
 is reported. The fourth is a red team of 150 attacks across 15 Indian fraud patterns, written by us. The fifth, also
 pre-registered, is an attacker model given the gate's full rules that adapts to its refusals. The sixth is a set of
@@ -84,7 +84,8 @@ payments were blocked, and in each case the agent was paying a wrong account it 
 attacker's payout was accepted in 11 of 15 without the gate and 0 of 15 with it; against a second provider's real payout
 API, 10 of 15 and 0 of 15. Legitimate payouts were unchanged in both. On a third provider's real UPI sandbox, the agent
 approved every fraudulent collect request (15 of 15) without the gate and none with it, and authorised 10 of 15
-fraudulent UPI Autopay mandates without it and none with it. The server's own provenance labels, which the agent fills in, described the
+fraudulent UPI Autopay mandates without it and none with it. A bill with a swapped QR code was paid in 15 of 15
+without the gate and 0 of 15 with it, while every legitimate bill was paid in both. The server's own provenance labels, which the agent fills in, described the
 attacker's account as ``user input'' 12 times out of 20.
 \item \textbf{An attacker who knows every rule.} A language model given the gate's full rules wrote the bill, SMS and
 web text and retried after each refusal. Against a customer who reads confirmations it never succeeded (0 of 45). Its

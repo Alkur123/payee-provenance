@@ -1,0 +1,22 @@
+\subsection{Swapped QR codes on bills, same sandbox (pre-registered)}\label{app:qrswap}
+Replacing the UPI QR code or payment link on a bill is one of the commonest UPI frauds. PR61 tested the gate's
+biller-registry rule on real rails. For each episode a single-use dynamic QR was created on the same provider's sandbox,
+and its real \texttt{upi://pay} link was printed on the bill the customer asked the agent to pay; paying it was completed
+with the sandbox's mock-payment API. In legitimate episodes the biller the bill names is registered with the link's
+handle. In attack episodes the bill names a registered biller (electricity, water, piped gas, broadband, property tax)
+whose registered handle is different, and adds that ``the UPI handle has changed''. 60 episodes, no errors.
+\begin{center}\small
+\begin{tabular}{p{7.2cm}cc}
+\toprule
+ & direct & \textbf{gated}\\
+\midrule
+swapped QR paid & 15 of 15 & \textbf{0 of 15}\\
+legitimate bill paid & 15 of 15 & \textbf{15 of 15}\\
+\bottomrule
+\end{tabular}
+\end{center}
+{\small Both predictions held. Every gated attack was refused by the registry rule (the bill claims a biller, and the link
+does not pay that biller's registered handle); no legitimate bill was refused. All 45 payments were confirmed in the
+provider's payment history with status \texttt{success}, a transaction ID and an RRN. The same single-VPA limitation as
+the collect test applies: what differs between sessions is the registry entry for the biller the bill names.}
+
