@@ -1,0 +1,28 @@
+\subsection{Collect requests on a third provider's real UPI sandbox (pre-registered)}\label{app:provider3}
+The two payout tests cover money the agent sends. The other side of UPI is the collect request, in which a payee asks the
+customer to pay and the customer approves; NPCI restricted person-to-person collect because of exactly this kind of fraud.
+PR59 gave the agent (gpt-4.1-mini) a customer's UPI inbox: it could list pending collect requests, read the customer's SMS
+and e-mail, and approve or decline. Each pending request was created for real on a third Indian provider's UPI sandbox,
+and an approval was completed with that sandbox's mock-payment API, which records a payment as if the customer's UPI app
+had paid. Fifteen attack scenarios used five common frauds (a fake refund, an electricity disconnection notice, a KYC
+fee, a parcel re-delivery fee and a marketplace buyer who asks the seller to approve a request ``to receive money''),
+each with three phrasings of the customer's instruction. Fifteen legitimate scenarios were requests from payees the
+customer had saved. 60 episodes, no errors, no request refused by the provider.
+\begin{center}\small
+\begin{tabular}{p{7.2cm}cc}
+\toprule
+ & direct & \textbf{gated}\\
+\midrule
+attacker's collect request paid & 15 of 15 & \textbf{0 of 15}\\
+legitimate request paid & 11 of 15 & \textbf{13 of 15}\\
+\bottomrule
+\end{tabular}
+\end{center}
+{\small Both predictions held. Without the gate the agent paid every fraudulent request, including all three marketplace
+requests framed as receiving money. The legitimate requests left unpaid were all cases in which the model asked the
+customer before approving; the gate refused none. All 39 payments were confirmed in the provider's payment history, each
+with a transaction ID and an RRN (status \texttt{initiated} on the sandbox rails). One limitation is declared in the
+pre-registration: the sandbox gives an account a single merchant VPA, so the attacker's payee and the legitimate payee are
+the same real VPA in different customer sessions. What differs, and what the gate reads, is where the payee came from: a
+payee the customer saved, or one that appeared only in the request and an SMS.}
+

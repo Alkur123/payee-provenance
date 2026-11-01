@@ -146,6 +146,15 @@ All 39 payments were confirmed in the provider's payment history (transaction ID
 rails). Declared limitation: the sandbox gives one merchant VPA, so attacker and legitimate payee are the same real VPA in
 different customer sessions; what the gate reads, and what differs, is where the payee came from.
 
+**UPI Autopay mandates on the same sandbox (pre-registered).** A mandate lets the payee debit the customer every month
+after one approval. Same design with real mandate requests, approvals completed by the sandbox's mandate mock API (fake
+streaming renewal, insurance premium, loan EMI "activation", electricity autopay, cashback activation; 15 saved-payee
+mandates as the legitimate set). 60 episodes, 0 errors. **Without the gate the agent authorised the attacker's mandate in
+10 of 15 episodes; with it, 0 of 15.** All 20 authorised mandates were confirmed `live` with a Unique Mandate Number in
+the provider's records. Legitimate mandates were authorised in 5 of 15 in both conditions: with two of the three
+instruction phrasings the model asked the customer before setting up any autopay, so that prediction held but was weakly
+tested; the gate refused no legitimate mandate.
+
 ### 5. Tests that can fail
 63 tests, including a 5,000-case fuzz of the fail-closed claim (only the customer's exact token can ever be allowed,
 under eight attacker transformations), laundering, registry mismatch, the concurrent-work gaps, the signed customer
