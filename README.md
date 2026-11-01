@@ -125,6 +125,15 @@ payee was credited. Two earlier attempts are reported, not used: one confounded 
 connection (31 of 44 requests refused for that reason; gated, still 0 of 15 attacker payouts reached the sandbox) and
 one stopped for low memory after 8 episodes.
 
+**A second provider's real payout API (pre-registered).** To show the gate is not tied to one provider, we ran the same
+scenarios, model and gate against a second Indian payment provider's real payout API in test mode. Its official agent
+server cannot create payouts, so the agent's payment tools were connected to its Payouts and Payout Links APIs by a small
+adapter (it refuses to send anything without a test-mode key). 48 episodes, 0 errors, all 65 requests answered HTTP 200:
+the attacker's payout was **accepted in 10 of 15 attack episodes direct and 0 of 15 gated**, and every legitimate payout
+was accepted in 15 of 15 episodes in both conditions. All 62 accepted payouts were confirmed in the provider's own
+records (7 to attacker accounts, all direct; the other 3 attacker payouts were payout links); every payout is queued in
+test mode, legitimate ones included, so again the claim is acceptance by the API, not settlement.
+
 ### 5. Tests that can fail
 63 tests, including a 5,000-case fuzz of the fail-closed claim (only the customer's exact token can ever be allowed,
 under eight attacker transformations), laundering, registry mismatch, the concurrent-work gaps, the signed customer
