@@ -230,11 +230,11 @@ through was held, and none was paid at once (Appendix~\ref{app:adaptive}).
 \centering
 \begin{tikzpicture}
 \begin{axis}[
-  scale only axis, width=10.6cm, height=6.2cm,
-  xmin=-4, xmax=104, ymin=0.4, ymax=7.6,
+  scale only axis, width=10.2cm, height=6.9cm,
+  xmin=-4, xmax=104, ymin=0.4, ymax=8.6,
   xtick={0,20,40,60,80,100}, xticklabel={\pgfmathprintnumber{\tick}\%},
   xlabel={share of attacks that moved money (or would have)},
-  ytick={1,2,3,4,5,6,7},
+  ytick={1,2,3,4,5,6,7,8},
   yticklabels={
     {AgentDojo, every banking run (n\,=\,1{,}477)},
     {Red team, agent hijacked (n\,=\,150)},
@@ -242,7 +242,8 @@ through was held, and none was paid at once (Appendix~\ref{app:adaptive}).
     {Closed loop, gpt-oss-120b (n\,=\,44)},
     {Closed loop, gpt-4.1-mini (n\,=\,45)},
     {Real payout server, gemma4 (n\,=\,15)},
-    {Real payout server, gpt-4.1-mini (n\,=\,15)}},
+    {Real payout server, gpt-4.1-mini (n\,=\,15)},
+    {Provider's real sandbox API, gpt-4.1-mini (n\,=\,15)}},
   yticklabel style={font=\small, text=black!80},
   xticklabel style={font=\small, text=black!65},
   xlabel style={font=\small, text=black!65},
@@ -261,11 +262,12 @@ through was held, and none was paid at once (Appendix~\ref{app:adaptive}).
 \addplot[draw=black!22, line width=1.6pt, forget plot] coordinates {(0,5) (44.4,5)};
 \addplot[draw=black!22, line width=1.6pt, forget plot] coordinates {(0,6) (93.3,6)};
 \addplot[draw=black!22, line width=1.6pt, forget plot] coordinates {(0,7) (66.7,7)};
+\addplot[draw=black!22, line width=1.6pt, forget plot] coordinates {(0,8) (73.3,8)};
 % no defence
 \addplot[only marks, mark=*, mark size=3.4pt, color=cnone, mark options={draw=white, line width=0.8pt},
   nodes near coords={\pgfmathprintnumber[fixed,precision=1]{\pgfplotspointmeta}\%},
   point meta=x, every node near coord/.append style={anchor=south, yshift=2pt}]
-  coordinates {(100,2) (26.7,3) (31.8,4) (44.4,5) (93.3,6) (66.7,7)};
+  coordinates {(100,2) (26.7,3) (31.8,4) (44.4,5) (93.3,6) (66.7,7) (73.3,8)};
 \addlegendentry{no defence}
 % existing control (UPI-style spending cap)
 \addplot[only marks, mark=square*, mark size=3.1pt, color=ccap, mark options={draw=white, line width=0.8pt},
@@ -277,11 +279,11 @@ through was held, and none was paid at once (Appendix~\ref{app:adaptive}).
 \addplot[only marks, mark=diamond*, mark size=4.2pt, color=cgate, mark options={draw=white, line width=0.8pt},
   nodes near coords={\textbf{0}}, point meta=x,
   every node near coord/.append style={anchor=east, xshift=-3pt, text=cgate}]
-  coordinates {(0,1) (0,2) (0,3) (0,4) (0,5) (0,6) (0,7)};
+  coordinates {(0,1) (0,2) (0,3) (0,4) (0,5) (0,6) (0,7) (0,8)};
 \addlegendentry{our provenance gate}
 \end{axis}
 \end{tikzpicture}
-\caption{Share of attacks that moved money in each evaluation, with no defence, with a spending limit (where measured) and with the gate. Each row is a separate evaluation; the gate's result is zero in all seven. The AgentDojo row contains only attacks that had already succeeded against the agent, so the undefended rate is 100\% by construction and only the spending limit is shown; 299 of these attacks had also passed an existing defence (a prompt-injection detector, tool filter, spotlighting or Meta-SecAlign). In the red team the customer reads each confirmation; a customer who approves everything would approve 10 of 150 attacks, all of which are held rather than paid. No legitimate task was lost to the gate in any closed-loop or payout-server run.}
+\caption{Share of attacks that moved money in each evaluation, with no defence, with a spending limit (where measured) and with the gate. Each row is a separate evaluation; the gate's result is zero in all eight. The AgentDojo row contains only attacks that had already succeeded against the agent, so the undefended rate is 100\% by construction and only the spending limit is shown; 299 of these attacks had also passed an existing defence (a prompt-injection detector, tool filter, spotlighting or Meta-SecAlign). In the red team the customer reads each confirmation; a customer who approves everything would approve 10 of 150 attacks, all of which are held rather than paid. No legitimate task was lost to the gate in any closed-loop or payout-server run.}
 \label{fig:results}
 \end{figure}
 

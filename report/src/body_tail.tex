@@ -34,9 +34,10 @@ published. One design observation about a real open-source payout server (Append
 privately with SAFL at team@secureaifutureslab.com, as this template asks; we name neither the vendor nor step-by-step
 details here.\\
 Environment & A local Python mock of a UPI-style rail with Reserve Pay-style mandates and a stand-in biller registry;
-AgentDojo's published logs; an Indian payment gateway's open-source payout server built from source and run locally against
-a capture proxy with dummy credentials (no vendor system contacted); gemma4 run locally, two models by API. No real
-transactions or accounts were involved.\\
+AgentDojo's published logs; an Indian payment gateway's open-source payout server built from source, run against a local
+capture proxy with dummy credentials and, in one evaluation, against the provider's sandbox with test-mode keys (test
+money, synthetic payees; a proxy refused any host other than the sandbox, so no production system was contacted);
+gemma4 run locally, two models by API. No real transactions or accounts were involved.\\
 \bottomrule
 \end{longtable}}
 

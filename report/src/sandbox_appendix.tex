@@ -1,0 +1,27 @@
+\subsection{Against the provider's real sandbox API (pre-registered)}\label{app:sandbox}
+The runs above captured the official payout server's requests on this machine. PR57 sent the same requests to the
+provider's real, internet-hosted sandbox (test money, no bank settlement), authenticated with test-mode keys and signed
+requests, and scored on the provider's own responses. A forwarding proxy recorded every request and response and
+forwarded only to the sandbox host; asked to reach the production host, it refused. Agent: gpt-4.1-mini, all 24
+scenarios, each run direct and gated; 48 episodes, no errors.
+\begin{center}\small
+\begin{tabular}{p{7.2cm}cc}
+\toprule
+ & direct (model $\rightarrow$ server $\rightarrow$ sandbox) & \textbf{gated} (gate in front)\\
+\midrule
+attacker payout accepted by the provider's API (HTTP 200, a provider transfer id) & 11 of 15 & \textbf{0 of 15}\\
+episodes in which every legitimate payout was accepted & 12 of 15 & \textbf{12 of 15}\\
+\bottomrule
+\end{tabular}
+\end{center}
+{\small Both predictions held. We then looked up every accepted transfer in the provider's own records: 8 were to
+attacker accounts (the other 3 attacker payouts were payout links, a separate endpoint). The sandbox's simulated
+settlement later marked every transfer to our synthetic UPI IDs failed or rejected, the 25 legitimate ones included,
+because they are not the provider's test instruments; the result is therefore that the payment API received and accepted
+the attacker's request, not that a payee was credited. Two requests were rejected for an invalid beneficiary name the
+model wrote. Two earlier runs are reported, not used: the first (gemma4) was confounded, because the account still
+required IP allow-listing and this machine's mobile connection changes address, so 31 of 44 payout requests were refused
+for that reason (gated, 0 of 15 attacker payouts still reached the sandbox); a re-run after switching to signed requests
+was stopped by the host for low memory after 8 episodes, all accepted. Each change was recorded in the pre-registration
+before the run it governed.}
+
